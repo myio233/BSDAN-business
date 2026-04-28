@@ -156,10 +156,10 @@ def resolve_market_report_base_dir(base_dir: Path = EXSCHOOL_DIR) -> Path:
         override_dir = Path(env_override)
         if _available_market_report_files(override_dir):
             return override_dir
-    if _available_market_report_files(EXSCHOOL_STRUCTURED_DIR):
-        return EXSCHOOL_STRUCTURED_DIR
     if _available_market_report_files(base_dir):
         return base_dir
+    if _available_market_report_files(EXSCHOOL_STRUCTURED_DIR):
+        return EXSCHOOL_STRUCTURED_DIR
     structured_dir = ensure_structured_market_reports()
     if structured_dir is not None:
         return structured_dir
