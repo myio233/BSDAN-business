@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% import "_page_macros.html" as page %}
+{% block content %}
+{% set mode_key = single_player_mode|default('real-original') %}
+{% if mode_key == 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set mode_summary = '本局最终总结对应当前 source-faithful 23 队真实原版竞争模式，对手输入来自真实比赛反推决策。' %}
+{% else %}
+{% set mode_key = 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set mode_summary = '高强度竞争已关闭；本局最终总结使用真实原版竞争。' %}
+{% endif %}
+{% set final_actions %}
+{{ page.action_link(request.url_for('home'), '返回首页', 'ghost') }}
+{% if not history_view %}
+{{ page.action_link(request.url_for('mode_select'), '开始新对局', 'ghost') }}
+{% endif %}
+{% endset %}
+<div class="report-page">
+  {% call page.hero_shell(
+    company_name ~ ' 最终总结',
+    kicker='历史结果' if history_view else '游戏完成',
+    subtitle=mode_summary ~ ' 主场城市：' ~ home_city_label ~ '，影响财务、材料与仓储参数。',
+    mode_key=mode_key,
+    mode_label=mode_label,
+    extra_title_markup=page.home_city_badge(home_city_label),
+    action_markup=final_actions
+  ) %}
+    {% if reports %}
+    <section class="report-grid">
+      <article class="metric-card">
+        <span>已完成轮数</span>
+        <strong>{{ reports|length }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>总营收</span>
+        <strong>¥{{ "{:,.0f}".format(total_revenue) }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>总净利润</span>
+        <strong>¥{{ "{:,.0f}".format(total_net_profit) }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>最终净资产</span>
+        <strong>¥{{ "{:,.0f}".format(final_net_assets) }}</strong>
+      </article>
+    </section>
+    {% endif %}
+  {% endcall %}
+
+{% if reports %}
+<section class="report-section">
+  {{ page.section_head('最终结果', eyebrow='总结概览') }}
+  <div class="table-wrap">
+    <table class="report-table compact">
+      <tbody>
+        <tr><th>已完成轮数</th><td>{{ reports|length }}</td></tr>
+        <tr><th>总营收</th><td>¥{{ "{:,.0f}".format(total_revenue) }}</td></tr>
+        <tr><th>总净利润</th><td>¥{{ "{:,.0f}".format(total_net_profit) }}</td></tr>
+        <tr><th>最终净资产</th><td>¥{{ "{:,.0f}".format(final_net_assets) }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel chart-panel">
+  {{ page.section_head('每轮净资产折线图', eyebrow='净资产走势') }}
+  <div class="chart-shell">
+    <canvas id="net-assets-chart" class="chart-canvas" width="820" height="260" data-series='{{ net_assets_series | tojson }}'></canvas>
+    <div id="net-assets-tooltip" class="chart-tooltip" hidden></div>
+  </div>
+</section>
+
+<section class="report-section">
+  {{ page.section_head('最终轮净资产排名', eyebrow='全公司排名') }}
+  <div class="table-wrap">
+    <table class="report-table compact">
+      <thead>
+        <tr><th>排名</th><th>队伍</th><th>净资产</th></tr>
+      </thead>
+      <tbody>
+        {% for row in final_standings %}
+        <tr {% if row.team == "13" %}class="highlight-row"{% endif %}>
+          <td>#{{ row.rank }}</td>
+          <td>C{{ row.team }}</td>
+          <td>¥{{ "{:,.0f}".format(row.net_assets) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel chart-panel">
+  {{ page.section_head('所有公司净资产折线图', eyebrow='全公司走势') }}
+  {{ page.all_company_chart_controls() }}
+  <div class="chart-shell">
+    <canvas id="all-company-chart" class="chart-canvas" width="900" height="300" data-series='{{ all_company_chart_series | tojson }}'></canvas>
+    <div id="all-company-tooltip" class="chart-tooltip" hidden></div>
+  </div>
+  <div id="all-company-legend" class="chart-legend"></div>
+</section>
+
+<section class="panel">
+  {{ page.section_head('已完成财报', eyebrow='轮次时间线') }}
+  <div class="table-wrap">
+    <table class="report-table">
+      <thead>
+        <tr><th>轮次</th><th>销售收入</th><th>净利润</th><th>净资产</th><th>期末现金</th><th>期末负债</th></tr>
+      </thead>
+      <tbody>
+        {% for report in reports %}
+        {% set revenue = report.key_metrics.get('销售收入', 0) %}
+        <tr>
+          <td>{{ report.round_id|upper }}</td>
+          <td>¥{{ "{:,.0f}".format(revenue) }}</td>
+          <td>¥{{ "{:,.0f}".format(report.net_profit) }}</td>
+          <td>¥{{ "{:,.0f}".format(report.net_assets) }}</td>
+          <td>¥{{ "{:,.0f}".format(report.ending_cash) }}</td>
+          <td>¥{{ "{:,.0f}".format(report.ending_debt) }}</td>
+        </tr>
+{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+{{ page.alert('当前没有可用的已完成轮次财报。请先返回游戏流程并至少提交一轮，再查看最终总结。') }}
+{% endif %}
+</div>
+
+<script src="{{ url_for('static', path='charts.js') }}?v={{ static_asset_version }}"></script>
+<script src="{{ url_for('static', path='js/final.js') }}?v={{ static_asset_version }}"></script>
+{% endblock %}

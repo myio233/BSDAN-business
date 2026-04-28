@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+{% import "_page_macros.html" as page %}
+{% block content %}
+{% set mode_key = single_player_mode|default('real-original') %}
+{% set asset_accounting = report.asset_accounting|default({}, true) %}
+{% set total_assets_label = asset_accounting.total_assets_label|default('总资产', true) %}
+{% set net_assets_label = asset_accounting.net_assets_label|default('净资产', true) %}
+{% if is_multiplayer and mode_key == 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set participant_label = multiplayer_participant_count|string if multiplayer_participant_count else '当前房间' %}
+{% set mode_summary = '本轮财报只统计当前多人房间内的 ' ~ participant_label ~ ' 支参赛队伍；排名、曲线和财务结算都不再混入房间外队伍。' %}
+{% elif mode_key == 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set mode_summary = '本轮财报对应当前 source-faithful 23 队真实原版竞争模式，对手输入来自真实比赛反推决策。' %}
+{% else %}
+{% set mode_key = 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set mode_summary = '高强度竞争已关闭；本轮财报使用真实原版竞争。' %}
+{% endif %}
+{% set report_actions %}
+<button type="button" id="download-report-image">下载财报</button>
+{% if not final_round %}
+<form method="post" action="{{ next_action_url }}">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+  <input type="hidden" name="game_id" value="{{ game_id }}" />
+  <button type="submit">{{ next_action_label }}</button>
+</form>
+{% else %}
+<form method="post" action="{{ next_action_url }}">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+  <input type="hidden" name="game_id" value="{{ game_id }}" />
+  <button type="submit">{{ next_action_label }}</button>
+</form>
+{% endif %}
+{% endset %}
+<div class="report-page">
+  {% call page.hero_shell(
+    company_name ~ ' · ' ~ (report.round_id|upper),
+    kicker='本轮财报',
+    subtitle=mode_summary ~ ' 主场城市：' ~ home_city_label ~ '，影响财务、材料与仓储参数。',
+    mode_key=mode_key,
+    mode_label=mode_label,
+    extra_title_markup=page.home_city_badge(home_city_label),
+    action_markup=report_actions
+  ) %}
+    <section class="report-grid report-grid-kpis report-grid-kpis-three">
+      <article class="metric-card">
+        <span>{{ total_assets_label }}</span>
+        <strong>¥{{ "{:,.0f}".format(report.total_assets) }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>{{ net_assets_label }}</span>
+        <strong>¥{{ "{:,.0f}".format(report.net_assets) }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>排名</span>
+        <strong>
+          {% if report.key_metrics["预计排名"] is none %}
+          暂无
+          {% else %}
+          #{{ report.key_metrics["预计排名"] }}
+          {% endif %}
+        </strong>
+      </article>
+    </section>
+
+    {{ page.round_status_strip(round_statuses) }}
+  {% endcall %}
+
+  <section class="report-section">
+    {% if report.notes %}
+    {{ page.section_head('Report Notes', eyebrow='说明') }}
+    <div class="table-wrap">
+      <table class="report-table compact">
+        <tbody>
+          {% for note in report.notes %}
+          <tr>
+            <th>{{ "%02d"|format(loop.index) }}</th>
+            <td>{{ note }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="report-section">
+    {{ page.section_head('本轮全公司' ~ net_assets_label ~ '排名', eyebrow='排名') }}
+    <div class="table-wrap">
+      <table class="report-table compact">
+        <thead>
+          <tr><th>排名</th><th>队伍</th><th>{{ net_assets_label }}</th><th>期末现金</th><th>期末负债</th><th>净利润</th></tr>
+        </thead>
+        <tbody>
+          {% for row in report.all_company_standings %}
+          <tr {% if row.team|string == current_team_id|string %}class="highlight-row"{% endif %}>
+            <td>#{{ row.rank }}</td>
+            <td>C{{ row.team }}</td>
+            <td>¥{{ "{:,.0f}".format(row.net_assets) }}</td>
+            <td>¥{{ "{:,.0f}".format(row.ending_cash) }}</td>
+            <td>¥{{ "{:,.0f}".format(row.ending_debt) }}</td>
+            <td>¥{{ "{:,.0f}".format(row.net_profit) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {{ page.chart_panel(
+    '所有公司' ~ net_assets_label ~ '折线图',
+    all_company_chart_series,
+    'all-company-chart',
+    'all-company-tooltip',
+    900,
+    300,
+    eyebrow='全公司走势',
+    controls_markup=page.all_company_chart_controls(),
+    legend_id='all-company-legend'
+  ) }}
+
+  <section class="report-section">
+    {{ page.section_head('财务', eyebrow='现金流') }}
+    <div class="table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr><th>项目</th><th>现金流</th><th>现金</th><th>负债变化</th><th>负债</th></tr>
+        </thead>
+        <tbody>
+          {% for label, cash_flow, cash, debt_change, debt in report.finance_rows %}
+          <tr>
+            <td>{{ label }}</td>
+            <td>{% if cash_flow is not none %}{{ "¥{:,.0f}".format(cash_flow) }}{% endif %}</td>
+            <td>{% if cash is not none %}{{ "¥{:,.0f}".format(cash) }}{% endif %}</td>
+            <td>{% if debt_change is not none %}{{ "¥{:,.0f}".format(debt_change) }}{% endif %}</td>
+            <td>{% if debt is not none %}{{ "¥{:,.0f}".format(debt) }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="split-section">
+    <section class="report-section">
+      {{ page.section_head('Human Resources', eyebrow='人力资源') }}
+      <div class="table-wrap">
+        <table class="report-table compact">
+          <thead>
+            <tr><th>类别</th><th>上轮非熟练</th><th>上轮熟练</th><th>裁员</th><th>离职</th><th>新增</th><th>本轮晋升</th><th>非熟练在岗</th><th>熟练在岗</th><th>总在岗</th><th>工资</th><th>平均</th><th>工资/平均</th><th>产能倍率</th><th>下轮晋升</th></tr>
+          </thead>
+          <tbody>
+            {% for row in report.hr_detail %}
+            <tr>
+              <td>{{ row.category }}</td>
+              <td>{{ row.previous }}</td>
+              <td>{{ row.previous_experienced }}</td>
+              <td>{% if row.laid_off > 0 %}-{{ row.laid_off }}{% else %}0{% endif %}</td>
+              <td>{% if row.quits > 0 %}-{{ row.quits }}{% else %}0{% endif %}</td>
+              <td>{% if row.added > 0 %}+{{ row.added }}{% else %}0{% endif %}</td>
+              <td>{% if row.promoted_this_round > 0 %}+{{ row.promoted_this_round }}{% else %}{{ row.promoted_this_round }}{% endif %}</td>
+              <td>{{ row.working }}</td>
+              <td>{{ row.experienced }}</td>
+              <td>{{ row.working_total }}</td>
+              <td>{{ "¥{:,.0f}".format(row.salary) }}</td>
+              <td>{{ "¥{:,.0f}".format(row.avg) }}</td>
+              <td>{{ "{:.3f}".format(row.salary_ratio) }}</td>
+              <td>{{ "{:.3f}".format(row.productivity_multiplier) }}</td>
+              <td>{{ row.promotion_ready }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="report-section">
+      {{ page.section_head('Management', eyebrow='管理') }}
+      <div class="table-wrap">
+        <table class="report-table compact">
+          <tbody>
+            <tr><th>Planned Management Investment</th><td>{{ "¥{:,.0f}".format(report.management_summary.planned_investment) }}</td></tr>
+            <tr><th>Management Investment</th><td>{{ "¥{:,.0f}".format(report.management_summary.investment) }}</td></tr>
+            <tr><th>Management Index</th><td>{{ "{:,.2f}".format(report.management_summary.index) }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <section class="report-section">
+    {{ page.section_head('Production Overview', eyebrow='生产') }}
+    <div class="table-wrap">
+      <table class="report-table compact">
+        <thead>
+          <tr><th>项目</th><th>计划</th><th>此前库存</th><th>生产</th><th>合计</th><th>使用/售出</th><th>剩余</th></tr>
+        </thead>
+        <tbody>
+          {% for row in report.production_overview %}
+          <tr>
+            <td>{{ row.item }}</td>
+            <td>{{ "{:,.0f}".format(row.plan) }}</td>
+            <td>{{ "{:,.0f}".format(row.previous) }}</td>
+            <td>{{ "{:,.0f}".format(row.produced) }}</td>
+            <td>{{ "{:,.0f}".format(row.total) }}</td>
+            <td>{{ "{:,.0f}".format(row.used_sold) }}</td>
+            <td>{{ "{:,.0f}".format(row.surplus) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="split-section">
+    <section class="report-section">
+      {{ page.section_head('Details', eyebrow='生产细节') }}
+      <div class="table-wrap">
+        <table class="report-table compact">
+          <thead>
+            <tr><th>项目</th><th>固定产能</th><th>工资</th><th>平均工资</th><th>工资/平均</th><th>产能倍率</th><th>调整后产能</th><th>人数</th><th>理论产量</th><th>实际产量</th><th>材料单价</th><th>材料成本</th></tr>
+          </thead>
+          <tbody>
+            {% for row in report.production_details %}
+            <tr>
+              <td>{{ row.item }}</td>
+              <td>{{ "{:,.2f}".format(row.base_productivity) }}</td>
+              <td>{{ "¥{:,.0f}".format(row.salary) }}</td>
+              <td>{{ "¥{:,.0f}".format(row.benchmark_salary) }}</td>
+              <td>{{ "{:.3f}".format(row.salary_ratio) }}</td>
+              <td>{{ "{:.3f}".format(row.productivity_multiplier) }}</td>
+              <td>{{ "{:,.2f}".format(row.productivity) }}</td>
+              <td>{{ "{:,.0f}".format(row.employees) }}</td>
+              <td>{{ "{:,.0f}".format(row.theoretical_capacity) }}</td>
+              <td>{{ "{:,.0f}".format(row.production) }}</td>
+              <td>{{ "¥{:,.0f}".format(row.material_price) }}</td>
+              <td>{{ "¥{:,.0f}".format(row.material_cost) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="report-section">
+      {{ page.section_head('Storage & Quality', eyebrow='仓储 / 质量 / 研发') }}
+      <div class="table-wrap">
+        <table class="report-table compact">
+          <thead>
+            <tr><th>项目</th><th>此前容量</th><th>本轮容量</th><th>增量</th><th>单价</th><th>成本</th></tr>
+          </thead>
+          <tbody>
+            {% for row in report.storage_summary %}
+            <tr>
+              <td>{{ row.item }}</td>
+              <td>{{ "{:,.0f}".format(row.capacity_before) }}</td>
+              <td>{{ "{:,.0f}".format(row.capacity_after) }}</td>
+              <td>{{ "{:,.0f}".format(row.increment) }}</td>
+              <td>{{ "¥{:,.0f}".format(row.unit_price) }}</td>
+              <td>{{ "¥{:,.0f}".format(row.storage_cost) }}</td>
+            </tr>
+            {% endfor %}
+            <tr><th>Quality Investment</th><td colspan="5">{{ "¥{:,.0f}".format(report.production_summary["质量投资"]) }}</td></tr>
+            <tr><th>Old Products</th><td colspan="5">{{ "{:,.0f}".format(report.production_summary["旧成品"]) }}</td></tr>
+            <tr><th>New Products</th><td colspan="5">{{ "{:,.0f}".format(report.production_summary["新成品"]) }}</td></tr>
+            <tr><th>Product Quality Index</th><td colspan="5">{{ "{:,.2f}".format(report.production_summary["产品质量指数"]) }}</td></tr>
+            <tr><th>Research Investment</th><td colspan="5">{{ "¥{:,.0f}".format(report.research_summary.investment) }}</td></tr>
+            <tr><th>Patents</th><td colspan="5">{{ report.research_summary.previous }} {% if report.research_summary.change > 0 %}+{{ report.research_summary.change }}{% else %}+0{% endif %} -> {{ report.research_summary.after }}</td></tr>
+            <tr><th>Accumulated Research Investment</th><td colspan="5">{{ "¥{:,.0f}".format(report.research_summary.accumulated) }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <section class="report-section">
+    <div class="table-wrap">
+      <table class="report-table compact">
+        <tbody>
+          <tr><th>零件理论产量</th><td>{{ "{:,.0f}".format(report.production_summary["零件最大产能"]) }}</td></tr>
+          <tr><th>零件工资产能倍率</th><td>{{ "{:.3f}".format(report.production_summary["零件工资倍率"]) }}</td></tr>
+          <tr><th>成品理论产量</th><td>{{ "{:,.0f}".format(report.production_summary["成品最大产能"]) }}</td></tr>
+          <tr><th>成品工资产能倍率</th><td>{{ "{:.3f}".format(report.production_summary["成品工资倍率"]) }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="report-section">
+    {{ page.section_head('Sales Agents', eyebrow='销售代理') }}
+    <div class="table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr><th>市场</th><th>上轮</th><th>变化</th><th>本轮后</th><th>变化成本</th><th>营销投入</th><th>报表订阅</th></tr>
+        </thead>
+        <tbody>
+          {% for row in report.sales_agents_table %}
+          <tr>
+            <td>{{ row.market }}</td>
+            <td>{{ row.previous }}</td>
+            <td>{{ "{:+d}".format(row.change) }}</td>
+            <td>{{ row.after }}</td>
+            <td>{{ "¥{:,.0f}".format(row.change_cost) }}</td>
+            <td>{{ "¥{:,.0f}".format(row.marketing_investment) }}</td>
+            <td>{{ "是" if row.subscribed_market_report else "否" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="report-section">
+    {{ page.section_head('Market Sales', eyebrow='销售结果') }}
+    <p style="margin: 0 0 14px; color: #64748b; font-size: 0.95rem;">
+      以下销量、份额、售价和销售额都是本轮模拟结算结果，用来说明这一轮在当前竞争环境下的落地表现。
+    </p>
+    <div class="table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr><th>市场</th><th>Sales Volume</th><th>Market Share</th><th>Price</th><th>Sales</th></tr>
+        </thead>
+        <tbody>
+          {% for row in report.market_results %}
+          <tr>
+            <td>{{ row.market }}</td>
+            <td>{{ "{:,.0f}".format(row.sales_volume) }}</td>
+            <td>{{ "{:.2f}%".format(row.market_share * 100) }}</td>
+            <td>{{ "¥{:,.0f}".format(row.price) }}</td>
+            <td>{{ "¥{:,.0f}".format(row.sales_revenue) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% for market, rows in report.peer_market_tables.items() %}
+  {% set summary = report.market_report_summaries.get(market, {}) %}
+  <section class="report-section market-report-section">
+    {{ page.section_head(market ~ ' 市场', eyebrow='市场报表') }}
+    {% if summary %}
+    <div class="grid-two" style="margin-bottom: 16px;">
+      <article class="metric-card">
+        <span>本轮模拟结果</span>
+        <strong>销量 {{ "{:,.0f}".format(summary.total_sales_volume | default(0)) }}</strong>
+        <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">
+          本轮模拟均价 ¥{{ "{:,.0f}".format(summary.realized_avg_price | default(summary.avg_price | default(0))) }}
+        </p>
+      </article>
+      <article class="metric-card">
+        <span>题面 / 工作簿参考</span>
+        <strong>市场容量 {{ "{:,.0f}".format(summary.market_size | default(0)) }}</strong>
+        <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">
+          人口 {{ "{:,.0f}".format(summary.population | default(0)) }}
+          · 渗透率 {{ "{:.2f}%".format((summary.penetration | default(0)) * 100) }}
+          · 题面均价 ¥{{ "{:,.0f}".format(summary.workbook_avg_price | default(summary.avg_price | default(0))) }}
+        </p>
+      </article>
+    </div>
+    {% endif %}
+    <div class="table-wrap">
+      <table class="report-table compact">
+        <thead>
+          <tr>
+            <th>队伍</th>
+            <th>代理数</th>
+            <th>营销</th>
+            <th>价格</th>
+            <th>销量</th>
+            <th>实际份额</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr {% if row.team|string == "13" %}class="highlight-row"{% endif %}>
+            <td>C{{ row.team }}</td>
+            <td>{{ "{:,.0f}".format(row.agents) }}</td>
+            <td>{{ "¥{:,.0f}".format(row.marketing_investment) }}</td>
+            <td>{{ "¥{:,.0f}".format(row.price) }}</td>
+            <td>{{ "{:,.0f}".format(row.display_sales_volume if row.display_sales_volume is defined else row.sales_volume_display if row.sales_volume_display is defined else row.sales_volume_exact if row.sales_volume_exact is defined else 0) }}</td>
+            <td>{{ "{:.2f}%".format(row.display_marketshare * 100) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+<script id="report-page-data" type="application/json">{{ {
+  "exportFilenameBase": (company_name ~ '-' ~ report.round_id ~ '-report'),
+  "reportImageUrl": (request.url_for('report_image') | string),
+  "reportImageCachedUrl": ((request.url_for('report_image_cached', cache_key=report_image_cache_key) | string) ~ '?game_id=' ~ game_id),
+  "reportImageCacheKey": report_image_cache_key,
+  "roundId": report.round_id,
+  "gameId": game_id,
+  "roundStatuses": round_statuses,
+  "cacheWarmAttempts": 8,
+  "downloadButtonLabel": "下载财报",
+  "downloadLoadingLabel": "准备图片中...",
+  "downloadErrorMessage": "财报图片生成失败，请稍后重试。"
+} | tojson }}</script>
+<script src="{{ url_for('static', path='charts.js') }}?v={{ static_asset_version }}"></script>
+<script src="{{ url_for('static', path='js/report.js') }}?v={{ static_asset_version }}"></script>
+{% endblock %}

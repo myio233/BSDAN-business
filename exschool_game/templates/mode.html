@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% import "_page_macros.html" as page %}
+{% block content %}
+{% set real_original_setup_url = request.url_for('single_real_setup') %}
+{% set multiplayer_setup_url = request.url_for('multiplayer_setup') %}
+<section class="hero" style="display: block; text-align: center; padding-top: 60px; padding-bottom: 40px; border: none; background: transparent; box-shadow: none;">
+  {{ page.page_heading(
+    '选择这一局的游戏模式。',
+    '单人模式继续使用固定对手；多人模式则创建实时房间，让真人席位直接覆盖 canonical 队伍。',
+    title_style='font-size: 32px; font-weight: 700; letter-spacing: -0.02em;',
+    subtitle_class='mode-intro'
+  ) }}
+</section>
+
+<section class="mode-grid" style="max-width: 800px; margin: 0 auto;">
+  {{ page.mode_option_card(
+    '真实原版竞争',
+    '当前 source-faithful 的 23 队模式。其它队伍使用从真实比赛财报反推回来的固定输入，更接近现有来源能还原出的历史比赛原貌。',
+    ['4 轮经营', '23 队 source-faithful', '真实反推', 'real-original workbook'],
+    real_original_setup_url,
+    '开始真实原版竞争',
+    'mode-card-real-original'
+  ) }}
+
+  {{ page.mode_option_card(
+    '实时多人对战',
+    '创建一个真人房间。真人席位会覆盖 canonical 队伍，其他队伍继续按 fixed opponents 参赛，开局后共享倒计时和提交状态。',
+    ['房主建房', '人满 + 全员准备', '40 分钟共享倒计时', '支持 bot 补位'],
+    multiplayer_setup_url,
+    '创建多人房间',
+    'mode-card-multiplayer'
+  ) }}
+</section>
+{% endblock %}

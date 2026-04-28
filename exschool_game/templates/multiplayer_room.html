@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% import "_page_macros.html" as page %}
+{% set page_data = multiplayer_page_data | default({}) %}
+{% set initial_snapshot = page_data.get('initialSnapshot') or {} %}
+{% set initial_summary = initial_snapshot.get('summary') or {} %}
+{% set current_player = initial_snapshot.get('current_player') or {} %}
+{% set room_name = initial_snapshot.get('room_name') or page_data.get('roomName') or '多人房间' %}
+{% set room_code = initial_snapshot.get('room_code') or page_data.get('roomCode') or '待分配' %}
+{% set room_status_label = initial_snapshot.get('status_label') or '等待中' %}
+{% set host_name = ((initial_snapshot.get('host') or {}).get('name')) or initial_snapshot.get('host_name') or '等待房主加入' %}
+{% set occupied_seats = initial_summary.get('occupiedSeats', 0) %}
+{% set total_seats = initial_summary.get('totalSeats', initial_snapshot.get('max_seats', 0)) %}
+{% set ready_count = initial_summary.get('readyCount', 0) %}
+{% set bot_count = initial_summary.get('botCount', 0) %}
+{% set current_player_status = current_player.get('status_label') or ('已加入房间' if current_player.get('in_room') else '未加入房间') %}
+{% set current_player_seat = current_player.get('seat_label') or '未就座' %}
+{% set current_player_name = current_player.get('name') or page_data.get('currentUserName') or '当前玩家' %}
+{% block body_data_attrs %} data-page-key="multiplayer-room" data-page-data-id="multiplayer-room-page-data"{% endblock %}
+{% block content %}
+{% set room_header_actions %}
+{% call page.button_row(class_name='action-row', style='display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px;') %}
+  <button type="button" class="ghost" id="multiplayer-refresh-button" data-testid="multiplayer-refresh-button">立即刷新</button>
+  <button type="button" class="ghost" id="multiplayer-join-button" data-testid="multiplayer-join-button">加入房间</button>
+  <button type="button" class="ghost" id="multiplayer-leave-button" data-testid="multiplayer-leave-button">离开房间</button>
+  <button type="button" class="ghost" id="multiplayer-ready-button" data-testid="multiplayer-ready-button">标记准备</button>
+  <button type="button" class="button-primary" id="multiplayer-start-button" data-testid="multiplayer-start-button">开始对局</button>
+{% endcall %}
+{% endset %}
+
+{{ page.alert(error) }}
+<section id="multiplayer-room-error" class="alert" hidden></section>
+<section id="multiplayer-room-message" class="alert success" hidden aria-live="polite"></section>
+
+{{ page.hero_shell(
+  room_name,
+  kicker='多人房间 / Lobby',
+  subtitle='房间信息会自动轮询刷新；座位、机器人与准备状态都以当前快照为准。',
+  shell_tag='section',
+  shell_class='action-bar',
+  head_tag='div',
+  head_class='report-head',
+  extra_title_markup=(
+    '<span class="badge" id="multiplayer-room-code" data-testid="multiplayer-room-code">房间码 ' ~ room_code ~ '</span>'
+    ~ '<span class="badge" id="multiplayer-room-status" data-testid="multiplayer-room-status">' ~ room_status_label ~ '</span>'
+  ),
+  action_markup=room_header_actions,
+  action_class=None,
+  action_style='display: flex; align-items: center; gap: 16px;'
+) }}
+
+<section class="compact-metrics" style="margin-bottom: 20px;">
+  <article class="compact-metric-card" data-testid="multiplayer-host-card">
+    <span>房主</span>
+    <strong id="multiplayer-host-name">{{ host_name }}</strong>
+    <p id="multiplayer-host-meta">房主负责最终开局。</p>
+  </article>
+  <article class="compact-metric-card" data-testid="multiplayer-seat-summary-card">
+    <span>席位占用</span>
+    <strong id="multiplayer-seat-summary">{{ occupied_seats }} / {{ total_seats }}</strong>
+    <p id="multiplayer-seat-meta">空位可继续加入，机器人也占用席位。</p>
+  </article>
+  <article class="compact-metric-card" data-testid="multiplayer-ready-summary-card">
+    <span>准备人数</span>
+    <strong id="multiplayer-ready-summary">{{ ready_count }}</strong>
+    <p id="multiplayer-ready-meta">所有关键席位准备后即可开局。</p>
+  </article>
+  <article class="compact-metric-card" data-testid="multiplayer-bot-summary-card">
+    <span>机器人席位</span>
+    <strong id="multiplayer-bot-summary">{{ bot_count }}</strong>
+    <p id="multiplayer-bot-meta">房主可补足或移除机器人。</p>
+  </article>
+</section>
+
+<section class="panel room-quick-panel" style="margin-bottom: 24px;">
+  {{ page.section_head('当前状态概览', '把个人状态和房间同步压缩到一排，开局前先看这里即可。', eyebrow='Quick View') }}
+  <div class="room-quick-grid">
+    <section class="room-quick-card" data-testid="multiplayer-current-player-panel">
+      <div class="room-quick-head">
+        <div>
+          <span class="room-quick-label">当前玩家</span>
+          <strong id="multiplayer-current-player-name">{{ current_player_name }}</strong>
+        </div>
+        <span id="multiplayer-current-player-seat" class="badge">{{ current_player_seat }}</span>
+      </div>
+      <p id="multiplayer-current-player-membership" class="room-quick-copy">{{ current_player_status }}</p>
+      <p id="multiplayer-current-player-ready" class="room-quick-copy">准备状态将在房间刷新后同步。</p>
+      <div class="room-quick-home-city" style="margin-top: 14px; display: grid; gap: 8px;">
+        <label for="multiplayer-home-city-select" class="room-quick-label">主场城市</label>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <select id="multiplayer-home-city-select" style="min-width: 160px;"></select>
+          <button type="button" class="ghost" id="multiplayer-home-city-save">保存主场城市</button>
+        </div>
+        <p id="multiplayer-home-city-copy" class="room-quick-copy">多人局会按你当前选择的主场城市结算贷款、利率、材料和仓储参数。</p>
+      </div>
+      <div id="multiplayer-current-player-badges" class="inline-badges room-quick-badges">
+        <span class="badge">{{ current_player_status }}</span>
+      </div>
+      <div class="room-quick-actions">
+        <a href="#" class="button-primary" id="multiplayer-enter-game-link" hidden>进入当前轮决策</a>
+        <a href="#" class="ghost" id="multiplayer-view-report-link" hidden>查看最新财报</a>
+        <a href="#" class="ghost" id="multiplayer-view-final-link" hidden>查看最终总结</a>
+      </div>
+    </section>
+
+    <section class="room-quick-card" data-testid="multiplayer-room-sync-panel">
+      <div class="room-quick-head">
+        <div>
+          <span class="room-quick-label">房间同步</span>
+          <strong id="multiplayer-last-sync-at">尚未刷新</strong>
+        </div>
+        <span id="multiplayer-polling-status" class="badge">待连接</span>
+      </div>
+      <p id="multiplayer-sync-source" class="room-quick-copy">等待首次房间快照。</p>
+      <p id="multiplayer-polling-meta" class="room-quick-copy">如果接口暂时不可用，页面会保留最近一次成功快照。</p>
+    </section>
+  </div>
+</section>
+
+<section class="panel" style="margin-bottom: 24px;" data-testid="multiplayer-seats-panel">
+  {{ page.section_head('真人席位与准备状态', '这里只保留真人席位和空席，机器人补位统一收到底部精简列表里。', eyebrow='房间席位') }}
+  <div id="multiplayer-seat-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+    <article class="panel" style="padding: 18px; background: rgba(148, 163, 184, 0.08);">
+      <p style="margin: 0; color: #64748b;">正在等待房间快照...</p>
+    </article>
+  </div>
+</section>
+
+<details class="panel collapsible-panel" data-testid="multiplayer-bots-panel">
+  <summary class="collapsible-summary">
+    <div>
+      <span class="kicker">机器人席位</span>
+      <strong>机器人与房间补位明细</strong>
+    </div>
+    <span class="badge">展开查看</span>
+  </summary>
+  <p class="collapsible-copy">这里只保留机器人席位的精简明细，避免和上方总席位列表重复占屏。</p>
+  <div id="multiplayer-bot-list" class="bot-summary-list">
+    <p style="margin: 0; color: #64748b;">当前没有机器人快照。</p>
+  </div>
+</details>
+{% endblock %}
+
+{% block page_scripts %}
+<script id="multiplayer-room-page-data" type="application/json">{{ page_data | tojson }}</script>
+<script src="{{ url_for('static', path='js/multiplayer_room.js') }}?v={{ static_asset_version }}"></script>
+{% endblock %}

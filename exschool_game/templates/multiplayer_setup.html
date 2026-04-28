@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% import "_page_macros.html" as page %}
+{% set create_form = setup_values | default({'seat_limit': 2, 'bot_count': 0}) %}
+{% set join_form = join_values | default({'room_code': ''}) %}
+{% block content %}
+<section class="hero" style="display: block; text-align: center; padding-top: 60px; padding-bottom: 40px; border: none; background: transparent; box-shadow: none;">
+  {{ page.page_heading(
+    '创建或加入实时多人房间。',
+    '房主可以创建房间，其他玩家可以直接输入房间码加入；开局后所有真人共享 40 分钟倒计时。',
+    title_style='font-size: 32px; font-weight: 700; letter-spacing: -0.02em;',
+    subtitle_class='mode-intro'
+  ) }}
+</section>
+
+<section class="grid-two" style="max-width: 1040px; margin: 0 auto; align-items: start;">
+  <section class="panel">
+    {{ page.section_head('加入已有房间', '输入朋友发给你的 6 位房间码，系统会直接把你加入该房间。', eyebrow='Join Room') }}
+    {{ page.alert(join_error) }}
+    <form method="post" action="{{ request.url_for('multiplayer_join_by_code') }}" style="display: grid; gap: 18px;">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+      <label>
+        <span>房间码</span>
+        <input type="text" id="multiplayer-room-code-input" name="room_code" value="{{ join_form.room_code }}" maxlength="6" placeholder="例如 A7K9Q2" required style="text-transform: uppercase;" />
+      </label>
+      <section class="panel multiplayer-join-tips">
+        {{ page.section_head('加入前会发生什么', '把最常见的问题直接放在输入框旁边。', eyebrow='Quick Notes') }}
+        <div class="compact-rule-list">
+          <p><strong>输入正确房间码后会直接入房。</strong> 你会被分配到空闲真人席位，然后自动跳到房间页。</p>
+          <p><strong>房间已满时不能加入。</strong> 如果真人席位已经坐满，会直接提示“房间已满”。</p>
+          <p><strong>进房后再决定是否准备。</strong> 只有进入房间的真人玩家才需要点“准备”。</p>
+        </div>
+      </section>
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        {{ page.action_link(request.url_for('mode_select'), '返回模式选择', 'ghost') }}
+        <button type="submit" class="button-primary" data-testid="multiplayer-join-by-code-submit">加入房间</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    {{ page.section_head('创建实时多人房间', '房主先设定真人席位和 bot 数量；房间坐满且所有真人准备后，才会统一进入 40 分钟倒计时。', eyebrow='Create Room') }}
+    {{ page.alert(create_error) }}
+    <form method="post" action="{{ request.url_for('multiplayer_create_room') }}" style="display: grid; gap: 18px;">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+      <div class="grid-two">
+        <label>
+          <span>真人席位数</span>
+          <input type="number" min="1" max="6" name="seat_limit" value="{{ create_form.seat_limit }}" required />
+        </label>
+        <label>
+          <span>bot 数量</span>
+          <input type="number" min="0" max="22" name="bot_count" value="{{ create_form.bot_count }}" required />
+        </label>
+      </div>
+      <section class="panel" style="background: rgba(148, 163, 184, 0.08);">
+        {{ page.section_head('当前规则', '先把多人房的 MVP 契约写清楚，避免和单人存档语义混淆。', eyebrow='Rules') }}
+        <div class="grid-two">
+          <article class="metric-card">
+            <span>开始条件</span>
+            <strong>人满 + 全员准备</strong>
+            <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">房间坐满后，所有真人玩家都点“已准备”，房主才能开局。</p>
+          </article>
+          <article class="metric-card">
+            <span>倒计时</span>
+            <strong>统一 40 分钟</strong>
+            <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">进入游戏后所有真人席位共用一个 round deadline，超时会自动提交默认输入。</p>
+          </article>
+          <article class="metric-card">
+            <span>bot 补位</span>
+            <strong>最强到最弱</strong>
+            <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">bot 会按真实财报反推队伍强度顺序补位，包含 C13。</p>
+          </article>
+          <article class="metric-card">
+            <span>赛场语义</span>
+            <strong>只按房间人数开赛</strong>
+            <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">本局只计算当前房间里的真人席位和 bot 席位；`a` 个真人 + `b` 个 bot，就只会有 `a+b` 支队伍进入市场和财报排名。</p>
+          </article>
+        </div>
+      </section>
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button type="submit" class="button-primary">创建房间</button>
+      </div>
+    </form>
+  </section>
+</section>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block content %}
+{% set mode_key = single_player_mode|default('real-original') %}
+{% if mode_key == 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set mode_kicker = '23 队 source-faithful' %}
+{% set mode_summary = '本局其它队伍会使用当前 source-faithful 23 队原始资料反推的固定决策输入，按同一套引擎逐轮结算。' %}
+{% else %}
+{% set mode_key = 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set mode_kicker = '23 队 source-faithful' %}
+{% set mode_summary = '高强度竞争已关闭；本局使用真实原版竞争。' %}
+{% endif %}
+{% set start_action = request.url_for('single_real_start') %}
+{% if error %}
+<section class="alert">{{ error }}</section>
+{% endif %}
+
+<div class="report-page setup-page">
+  <section class="panel report-hero">
+    <header class="report-head">
+      <div>
+        <p class="kicker">{{ mode_kicker }}</p>
+        <div class="report-title-row">
+          <h1>{{ mode_label }}</h1>
+          <span class="mode-chip mode-chip-{{ mode_key }}" data-testid="mode-chip">{{ mode_label }}</span>
+        </div>
+        <p class="mode-summary-copy">{{ mode_summary }}</p>
+      </div>
+    </header>
+
+    <section class="report-grid">
+      <article class="metric-card">
+        <span>初始现金</span>
+        <strong>¥{{ "{:,.0f}".format(key_data.initial_cash) }}</strong>
+      </article>
+      <article class="metric-card">
+        <span>市场数量</span>
+        <strong>{{ key_data.markets|length }} 个</strong>
+      </article>
+      <article class="metric-card">
+        <span>主场城市</span>
+        <strong>
+          {% for city in home_city_options %}
+          {{ home_city_labels.get(city, city) }}{% if not loop.last %}、{% endif %}
+          {% endfor %}
+        </strong>
+      </article>
+    </section>
+
+    <div class="table-wrap">
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>市场</th>
+            <th>初始最大贷款</th>
+            <th>工人工资</th>
+            <th>工程师工资</th>
+            <th>利率</th>
+            <th>零件材料成本</th>
+            <th>成品材料成本</th>
+            <th>零件仓储成本</th>
+            <th>成品仓储成本</th>
+            <th>人口</th>
+            <th>初始渗透率</th>
+            <th>初始均价</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for market, values in key_data.markets.items() %}
+          <tr>
+            <td>{{ home_city_labels.get(market, market) }}</td>
+            <td>¥{{ "{:,.0f}".format(values.initial_max_loan) }}</td>
+            <td>¥{{ "{:,.0f}".format(values.initial_worker_salary) }}</td>
+            <td>¥{{ "{:,.0f}".format(values.initial_engineer_salary) }}</td>
+            <td>{{ "{:.2%}".format(values.interest_rate) }}</td>
+            <td>¥{{ "{:,.0f}".format(values.component_material_unit_cost) }}</td>
+            <td>¥{{ "{:,.0f}".format(values.product_material_unit_cost) }}</td>
+            <td>¥{{ "{:,.0f}".format(values.component_storage_unit_cost) }}</td>
+            <td>¥{{ "{:,.0f}".format(values.product_storage_unit_cost) }}</td>
+            <td>{{ "{:,.0f}".format(values.population) }}</td>
+            <td>{{ "{:.2%}".format(values.initial_penetration) }}</td>
+            <td>¥{{ "{:,.0f}".format(values.initial_avg_price) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="table-wrap">
+      <table class="report-table compact">
+        <tbody>
+          {% for row in equation_rows %}
+          <tr>
+            <th class="setup-equation-label">{{ row.item or "规则" }}</th>
+            <td>{{ row.formula }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="report-section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">公司设置</p>
+        <h2>开始这一局</h2>
+      </div>
+    </div>
+    <form method="post" action="{{ start_action }}" class="grid-two" data-testid="single-setup-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+      <input type="hidden" name="single_player_mode" value="{{ mode_key }}" />
+      <label>
+        <span>公司名称</span>
+        <input type="text" name="company_name" value="{{ setup_values.company_name }}" required />
+      </label>
+      <label>
+        <span>主场城市</span>
+        <select name="home_city" required>
+          {% if setup_values.home_city and setup_values.home_city not in home_city_options %}
+          <option value="{{ setup_values.home_city }}" selected disabled>{{ setup_values.home_city }}</option>
+          {% endif %}
+          {% for city in home_city_options %}
+          <option value="{{ city }}" {% if city == setup_values.home_city %}selected{% endif %}>{{ home_city_labels.get(city, city) }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="form-actions">
+        <button type="submit">开始 40 分钟游戏</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}

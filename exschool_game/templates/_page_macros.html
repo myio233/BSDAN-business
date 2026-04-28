@@ -1,0 +1,138 @@
+{% macro action_link(href, label, class_name, data_testid=None) -%}
+<a class="{{ class_name }}" href="{{ href }}"{% if data_testid %} data-testid="{{ data_testid }}"{% endif %}>{{ label }}</a>
+{%- endmacro %}
+
+{% macro button_row(class_name='action-row', style=None) -%}
+<div{% if class_name %} class="{{ class_name }}"{% endif %}{% if style %} style="{{ style }}"{% endif %}>
+  {% if caller is defined %}
+  {{ caller() }}
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro page_heading(title, subtitle=None, kicker=None, kicker_class=None, title_class=None, title_style=None, subtitle_class=None) -%}
+{% if kicker %}
+<p class="{{ kicker_class or 'eyebrow' }}">{{ kicker }}</p>
+{% endif %}
+<h1{% if title_class %} class="{{ title_class }}"{% endif %}{% if title_style %} style="{{ title_style }}"{% endif %}>{{ title }}</h1>
+{% if subtitle %}
+<p{% if subtitle_class %} class="{{ subtitle_class }}"{% endif %}>{{ subtitle }}</p>
+{% endif %}
+{%- endmacro %}
+
+{% macro alert(message, class_name='alert') -%}
+{% if message %}
+<section class="{{ class_name }}">{{ message }}</section>
+{% endif %}
+{%- endmacro %}
+
+{% macro home_city_badge(home_city_label, data_testid='home-city-chip') -%}
+<span class="badge"{% if data_testid %} data-testid="{{ data_testid }}"{% endif %}>主场城市：{{ home_city_label }}</span>
+{%- endmacro %}
+
+{% macro hero_shell(title, kicker=None, subtitle=None, shell_tag='section', shell_class='panel report-hero', head_tag='header', head_class='report-head', title_row_class='report-title-row', mode_key=None, mode_label=None, extra_title_markup=None, action_markup=None, action_tag='div', action_class='action-row', action_style=None) -%}
+<{{ shell_tag }}{% if shell_class %} class="{{ shell_class }}"{% endif %}>
+  <{{ head_tag }}{% if head_class %} class="{{ head_class }}"{% endif %}>
+    <div>
+      {% if kicker %}
+      <p class="kicker">{{ kicker }}</p>
+      {% endif %}
+      <div class="{{ title_row_class }}">
+        <h1>{{ title }}</h1>
+        {% if mode_key and mode_label %}
+        <span class="mode-chip mode-chip-{{ mode_key }}" data-testid="mode-chip">{{ mode_label }}</span>
+        {% endif %}
+        {% if extra_title_markup %}
+        {{ extra_title_markup | safe }}
+        {% endif %}
+      </div>
+      {% if subtitle %}
+      <p class="mode-summary-copy">{{ subtitle }}</p>
+      {% endif %}
+    </div>
+    {% if action_markup %}
+    <{{ action_tag }}{% if action_class %} class="{{ action_class }}"{% endif %}{% if action_style %} style="{{ action_style }}"{% endif %}>
+      {{ action_markup | safe }}
+    </{{ action_tag }}>
+    {% endif %}
+  </{{ head_tag }}>
+  {% if caller is defined %}
+  {{ caller() }}
+  {% endif %}
+</{{ shell_tag }}>
+{%- endmacro %}
+
+{% macro round_status_strip(round_statuses, class_name='round-status-strip', element_id='round-status-strip') -%}
+<div class="{{ class_name }}"{% if element_id %} id="{{ element_id }}"{% endif %}>
+  {% for item in round_statuses %}
+  <span class="badge round-status-badge round-status-{{ item.status }}" data-round-id="{{ item.round_id }}">{{ item.label }} {{ item.status_label }}</span>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{% macro section_head(title, description=None, eyebrow=None, class_name='section-head', title_tag='h2') -%}
+<div class="{{ class_name }}">
+  {% if eyebrow %}
+  <div>
+    <p class="eyebrow">{{ eyebrow }}</p>
+    <{{ title_tag }}>{{ title }}</{{ title_tag }}>
+    {% if description %}
+    <p>{{ description }}</p>
+    {% endif %}
+  </div>
+  {% else %}
+  <{{ title_tag }}>{{ title }}</{{ title_tag }}>
+  {% if description %}
+  <p>{{ description }}</p>
+  {% endif %}
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro all_company_chart_controls(zoom_in_id='all-company-zoom-in', zoom_out_id='all-company-zoom-out', zoom_reset_id='all-company-zoom-reset') -%}
+<div class="chart-toolbar">
+  <div class="chart-controls">
+    <button type="button" class="ghost" id="{{ zoom_in_id }}">放大</button>
+    <button type="button" class="ghost" id="{{ zoom_out_id }}">缩小</button>
+    <button type="button" class="ghost" id="{{ zoom_reset_id }}">重置</button>
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro chart_panel(title, series, canvas_id, tooltip_id, width, height, eyebrow=None, controls_markup=None, legend_id=None) -%}
+<section class="panel chart-panel">
+  {{ section_head(title, eyebrow=eyebrow) }}
+  {% if controls_markup %}
+  {{ controls_markup | safe }}
+  {% endif %}
+  <div class="chart-shell">
+    <canvas
+      id="{{ canvas_id }}"
+      class="chart-canvas"
+      width="{{ width }}"
+      height="{{ height }}"
+      data-series='{{ series | tojson }}'
+    ></canvas>
+    <div id="{{ tooltip_id }}" class="chart-tooltip" hidden></div>
+  </div>
+  {% if legend_id %}
+  <div id="{{ legend_id }}" class="chart-legend"></div>
+  {% endif %}
+</section>
+{%- endmacro %}
+
+{% macro mode_option_card(title, description, features, href, button_label, card_id=None) -%}
+<article class="panel mode-card{% if card_id %} {{ card_id }}{% endif %}">
+  <p class="eyebrow">Game Mode</p>
+  <h2>{{ title }}</h2>
+  <p class="lede">{{ description }}</p>
+  {% if features %}
+  <div class="inline-actions" style="margin-bottom: 24px;">
+    {% for item in features %}
+    <span class="badge">{{ item }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {{ action_link(href, button_label, 'button button-primary') }}
+</article>
+{%- endmacro %}

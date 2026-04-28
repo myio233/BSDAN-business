@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+{% import "_page_macros.html" as page %}
+{% block content %}
+{% set mode_key = single_player_mode|default('real-original') %}
+{% if is_multiplayer and mode_key == 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set participant_label = multiplayer_participant_count|string if multiplayer_participant_count else '当前房间' %}
+{% set mode_summary = '本轮只结算当前多人房间内的 ' ~ participant_label ~ ' 支参赛队伍；参数来源仍使用真实原版数据口径，但不会再混入房间外队伍。' %}
+{% elif mode_key == 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set mode_summary = '本轮对手输入来自当前 source-faithful 23 队原始资料反推决策；你和其它队伍仍走同一套结算规则。' %}
+{% else %}
+{% set mode_key = 'real-original' %}
+{% set mode_label = '真实原版竞争' %}
+{% set mode_summary = '高强度竞争已关闭；本轮使用真实原版竞争。' %}
+{% endif %}
+{% set round_header_actions %}
+<div
+  class="timer-card"
+  data-time-limit="{{ time_limit_seconds }}"
+  data-game-id="{{ game_id }}"
+  data-round-id="{{ round_id }}"
+  data-round-started-at-ms="{{ round_started_at_ms | default(0) }}"
+  data-round-deadline-ms="{{ round_deadline_ms | default(0) }}"
+  data-round-expired="{{ round_is_expired | default(false) | tojson }}"
+>
+  <span id="countdown">40:00</span>
+</div>
+{% if current_round_submitted %}
+<button type="submit" class="button-primary" formaction="{{ next_action_url }}" formmethod="post">进入下一轮决策</button>
+{% else %}
+<button type="button" class="ghost" id="load-defaults">恢复默认值</button>
+<button type="button" class="button-primary" id="open-submit-preview">预览并提交</button>
+{% endif %}
+{% endset %}
+
+{{ page.alert(error) }}
+
+<form method="post" action="{{ submit_action_url }}" id="decision-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+  <input type="hidden" name="round_id" value="{{ round_id }}" />
+  <input type="hidden" name="submit_mode" value="manual" />
+  <input type="hidden" name="game_id" value="{{ game_id }}" />
+
+  {{ page.hero_shell(
+    company_name ~ ' · ' ~ (round_id|upper),
+    kicker='第 ' ~ round_number ~ ' 轮',
+    subtitle=mode_summary,
+    shell_tag='div',
+    shell_class='action-bar',
+    head_tag='div',
+    head_class='report-head',
+    mode_key=mode_key,
+    mode_label=mode_label,
+    action_markup=round_header_actions,
+    action_class=None,
+    action_style='display: flex; align-items: center; gap: 16px;'
+  ) }}
+
+  {{ page.round_status_strip(round_statuses) }}
+
+  {% if multiplayer_room_snapshot %}
+  <section class="panel" style="margin-bottom: 24px;">
+    {{ page.section_head('多人房间状态', '用紧凑行视图直接看完当前房间所有玩家的队伍、主场和提交状态。', eyebrow='Room Live') }}
+    <div class="multiplayer-live-table">
+      <div class="multiplayer-live-row multiplayer-live-head" aria-hidden="true">
+        <span>玩家</span>
+        <span>队伍</span>
+        <span>主场</span>
+        <span>本轮状态</span>
+      </div>
+      {% for item in multiplayer_room_snapshot.players %}
+      <article class="multiplayer-live-row" data-testid="multiplayer-player-status-{{ item.team_id or loop.index }}">
+        <div class="multiplayer-live-primary">
+          <strong>{{ item.name }}</strong>
+        </div>
+        <span class="multiplayer-live-cell">{{ item.team_label }}</span>
+        <span class="multiplayer-live-cell">{{ item.home_city_label or '待分配主场' }}</span>
+        <span class="multiplayer-live-cell">
+          <span class="badge multiplayer-live-status {% if item.submitted_current_round %}is-submitted{% else %}is-pending{% endif %}">
+            {{ '已提交' if item.submitted_current_round else '未提交' }}
+          </span>
+        </span>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <fieldset class="round-form-shell" {% if current_round_submitted %}disabled{% endif %}>
+  <!-- Dashboard Overview -->
+  <section class="grid-four" style="margin-bottom: 24px;">
+    <article class="metric-card">
+      <span>本轮期初现金</span>
+      <strong>¥{{ "{:,.0f}".format(starting_cash) }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>本轮期初负债</span>
+      <strong>¥{{ "{:,.0f}".format(starting_debt) }}</strong>
+    </article>
+    <article class="metric-card">
+      <span>本轮最大贷款</span>
+      <strong>¥{{ "{:,.0f}".format(loan_limit) }}</strong>
+    </article>
+    {% if previous_report %}
+    <article class="metric-card">
+      <span>上一轮期末现金 ({{ previous_report.round_id|upper }})</span>
+      <strong>¥{{ "{:,.0f}".format(previous_report.ending_cash) }}</strong>
+    </article>
+    {% else %}
+    <article class="metric-card">
+      <span>上一轮</span>
+      <strong>无</strong>
+    </article>
+    {% endif %}
+  </section>
+
+  <section class="panel" style="margin-bottom: 24px;">
+    {{ page.section_head('续接状态', '这些结转状态会直接影响本轮产能、研发成本和市场表现。') }}
+    <div class="grid-four">
+      <article class="metric-card">
+        <span>主场与续接来源</span>
+        <strong>{{ home_city_label }}</strong>
+        <p style="margin: 8px 0 0; font-size: 0.92rem; color: #64748b;">续接自 {{ carry_over_state.source_round_label }}</p>
+      </article>
+      <article class="metric-card">
+        <span>库存结转</span>
+        <strong>零件 {{ "{:,.0f}".format(carry_over_state.component_inventory) }}</strong>
+        <p style="margin: 8px 0 0; font-size: 0.92rem; color: #64748b;">成品 {{ "{:,.0f}".format(carry_over_state.product_inventory) }}</p>
+      </article>
+      <article class="metric-card">
+        <span>仓储容量</span>
+        <strong>零件 {{ "{:,.0f}".format(carry_over_state.component_capacity) }}</strong>
+        <p style="margin: 8px 0 0; font-size: 0.92rem; color: #64748b;">成品 {{ "{:,.0f}".format(carry_over_state.product_capacity) }}</p>
+      </article>
+      <article class="metric-card">
+        <span>专利与累计研发</span>
+        <strong>{{ carry_over_state.active_patents }} 项专利</strong>
+        <p style="margin: 8px 0 0; font-size: 0.92rem; color: #64748b;">累计研发 ¥{{ "{:,.0f}".format(carry_over_state.accumulated_research_investment) }}</p>
+      </article>
+      <article class="metric-card">
+        <span>上一轮管理指数</span>
+        <strong>{{ "{:.2f}".format(carry_over_state.previous_management_index) }}</strong>
+        <p style="margin: 8px 0 0; font-size: 0.92rem; color: #64748b;">上一轮质量指数 {{ "{:.2f}".format(carry_over_state.previous_quality_index) }}</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- Tab Navigation -->
+  <nav class="tabs-nav">
+    <button type="button" class="tab-btn active" data-target="tab-operations">1. 资金与生产</button>
+    <button type="button" class="tab-btn" data-target="tab-hr">2. 人员配置</button>
+    <button type="button" class="tab-btn" data-target="tab-investments">3. 经营投入</button>
+    <button type="button" class="tab-btn" data-target="tab-markets">4. 市场策略</button>
+  </nav>
+
+  <div class="panel">
+    <!-- Tab 1: Operations -->
+    <div id="tab-operations" class="tab-pane active">
+      {{ page.section_head('资金与生产', '设定本轮的基础资金变动和生产计划。') }}
+      <div class="grid-two">
+        <label>
+          <span>贷款变动 (正为借款，负为还款)</span>
+          <input type="number" step="0.01" name="loan_delta" />
+        </label>
+        <label>
+          <span>计划生产数量</span>
+          <input type="number" name="products_planned" />
+        </label>
+      </div>
+    </div>
+
+    <!-- Tab 2: HR -->
+    <div id="tab-hr" class="tab-pane">
+      {{ page.section_head('人员配置', '调整工厂工人与研发工程师的人数及薪资待遇。') }}
+      <section class="panel" style="margin-bottom: 20px; background: rgba(148, 163, 184, 0.08);">
+        {{ page.section_head('当前团队结构', '先看现有平均工资和人员层级，再决定本轮是否提薪、扩招或收缩。', eyebrow='HR 续接视图') }}
+        <div class="grid-two">
+          {% for role in hr_snapshot.roles %}
+          <article class="metric-card" data-testid="hr-snapshot-{{ role.role_key }}">
+            <span>{{ role.role_label }}当前在岗</span>
+            <strong>{{ role.total }} 人</strong>
+            <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">
+              当前工资设置 ¥{{ "{:,.0f}".format(role.current_salary) }}
+              · 当前平均工资 ¥{{ "{:,.0f}".format(role.average_salary) }}
+            </p>
+            <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px;">
+              {% for cohort in role.cohorts %}
+              <span class="badge">{{ cohort.badge_label }}</span>
+              {% endfor %}
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      <div class="grid-two">
+        <label>
+          <span>工人数变化 (+/-)</span>
+          <input type="number" name="workers" />
+          <span class="field-meta">
+            <span>当前在岗 {{ workers_actual | default(0) }}</span>
+            <span data-after-field="workers">提交后 {{ workers_actual | default(0) }}</span>
+          </span>
+        </label>
+        <label>
+          <span>工程师数变化 (+/-)</span>
+          <input type="number" name="engineers" />
+          <span class="field-meta">
+            <span>当前在岗 {{ engineers_actual | default(0) }}</span>
+            <span data-after-field="engineers">提交后 {{ engineers_actual | default(0) }}</span>
+          </span>
+        </label>
+        <label><span>工人工资</span><input type="number" step="0.01" name="worker_salary" /></label>
+        <label><span>工程师工资</span><input type="number" step="0.01" name="engineer_salary" /></label>
+      </div>
+    </div>
+
+    <!-- Tab 3: Investments -->
+    <div id="tab-investments" class="tab-pane">
+      {{ page.section_head('经营投入', '决定本轮在管理、质量控制和研发上的资金投入。') }}
+      <section class="panel" style="margin-bottom: 20px; background: rgba(148, 163, 184, 0.08);">
+        {{ page.section_head('决策提醒', '把会影响本轮和后续轮次的投入规则留在输入框旁边。', eyebrow='经营规则') }}
+        <div class="grid-two">
+          {% for hint in decision_near_guidance.investments %}
+          <article class="metric-card" data-testid="investment-guidance-{{ loop.index }}">
+            <span>{{ hint.title }}</span>
+            <strong>{{ hint.emphasis }}</strong>
+            <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">{{ hint.detail }}</p>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      <div class="grid-three">
+        <label><span>管理投入</span><input type="number" step="0.01" name="management_investment" /></label>
+        <label><span>质量投入</span><input type="number" step="0.01" name="quality_investment" /></label>
+        <label><span>研发投入</span><input type="number" step="0.01" name="research_investment" /></label>
+      </div>
+    </div>
+
+    <!-- Tab 4: Markets -->
+    <div id="tab-markets" class="tab-pane">
+      {{ page.section_head('市场策略', '针对各个独立市场配置渠道、营销和定价。') }}
+      <section class="panel" style="margin-bottom: 20px; background: rgba(148, 163, 184, 0.08);">
+        {{ page.section_head('市场参考怎么用', '把题面参考和需要付费的报告规则固定在市场输入区上方。', eyebrow='市场规则') }}
+        <div class="grid-two">
+          {% for hint in decision_near_guidance.markets %}
+          <article class="metric-card" data-testid="market-guidance-{{ loop.index }}">
+            <span>{{ hint.title }}</span>
+            <strong>{{ hint.emphasis }}</strong>
+            <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">{{ hint.detail }}</p>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      <div class="market-grid" id="market-grid">
+        {% for market in all_markets %}
+        {% set evidence = market_evidence[market] %}
+        <section class="market-card" data-market="{{ market }}">
+          <h3>{{ market }}</h3>
+          <label class="checkbox-row">
+            <span>订阅市场报表</span>
+            <input type="checkbox" name="{{ market|lower }}_market_report" value="1" />
+          </label>
+          <label>
+            <span>渠道代理变化 (+/-)</span>
+            <input type="number" name="{{ market|lower }}_agent_change" data-current-agents="{{ current_agents[market] | default(0) }}" data-market-label="{{ market }}" />
+            <span class="field-meta">
+              <span>当前代理 {{ current_agents[market] | default(0) }}</span>
+              <span data-after-agent="{{ market }}">提交后 {{ current_agents[market] | default(0) }}</span>
+            </span>
+          </label>
+          <label><span>营销投入</span><input type="number" step="0.01" name="{{ market|lower }}_marketing_investment" /></label>
+          <label><span>产品售价</span><input type="number" step="0.01" name="{{ market|lower }}_price" /></label>
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(15, 23, 42, 0.08); display: grid; gap: 6px;">
+            <span class="kicker">已知市场参考</span>
+            <span class="field-meta">
+              <span>上轮代理 {{ evidence.previous_agents }}</span>
+              <span>参考价格 ¥{{ "{:,.0f}".format(evidence.reference_price) }}</span>
+            </span>
+            <span class="field-meta">
+              <span>参考销量 {{ "{:,.0f}".format(evidence.reference_sales_volume) }}</span>
+              <span>参考份额 {{ "{:.1%}".format(evidence.reference_market_share) }}</span>
+            </span>
+          </div>
+        </section>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  </fieldset>
+</form>
+
+{% if not current_round_submitted %}
+<div class="modal-backdrop" id="decision-preview" hidden>
+  <div class="modal-card">
+    {{ page.section_head('本轮决策预览', eyebrow='提交确认') }}
+    <div class="decision-preview-body" id="decision-preview-body"></div>
+    <section class="panel" id="decision-preview-live-panel" style="margin-top: 16px; background: rgba(148, 163, 184, 0.08);">
+      {{ page.section_head('执行侧试算', '这里会按当前引擎规则先跑一次不落库试算，直接显示真正会被夹紧、削减或结转的结果。', eyebrow='真实预览') }}
+      <p id="decision-preview-live-status" style="margin: 0 0 12px; color: #475569;">打开预览后会自动刷新当前输入的真实试算结果。</p>
+      <section class="alert" id="decision-preview-live-error" hidden></section>
+      <div class="grid-four" id="decision-preview-live-metrics"></div>
+      <div class="table-wrap" style="margin-top: 16px;">
+        <table class="report-table compact">
+          <thead>
+            <tr><th>类别</th><th>期初在岗</th><th>目标变化</th><th>目标在岗</th><th>实际在岗</th><th>裁员</th><th>离职</th><th>新增</th><th>工资/平均</th><th>产能倍率</th></tr>
+          </thead>
+          <tbody id="decision-preview-live-workforce"></tbody>
+        </table>
+      </div>
+      <div class="table-wrap" style="margin-top: 16px;">
+        <table class="report-table compact">
+          <thead>
+            <tr><th>市场</th><th>报表</th><th>代理变化</th><th>期末代理</th><th>营销投入</th><th>预测销量</th><th>预测份额</th></tr>
+          </thead>
+          <tbody id="decision-preview-live-markets"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel" style="margin-top: 16px; background: rgba(148, 163, 184, 0.08);">
+      {{ page.section_head('执行侧提示', '下面不是通用规则文案，而是基于当前续接状态、主场与代理底盘整理出的本轮执行提醒。', eyebrow='结算规则') }}
+      <div class="grid-two">
+        {% for hint in preview_consequence_hints %}
+        <article class="metric-card" data-testid="preview-consequence-{{ loop.index }}">
+          <span>{{ hint.title }}</span>
+          <strong>{{ hint.emphasis }}</strong>
+          <p style="margin: 8px 0 0; font-size: 0.92rem; color: #475569;">{{ hint.detail }}</p>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    <div class="modal-actions">
+      <button type="button" class="ghost" data-close-preview>返回修改</button>
+      <button type="button" class="button-primary" id="confirm-submit">确认提交</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block page_scripts %}
+<script id="round-page-data" type="application/json">{{ {
+  "currentRoundSubmitted": current_round_submitted,
+  "roundStatuses": round_statuses,
+  "currentWorkers": workers_actual | default(0),
+  "currentEngineers": engineers_actual | default(0),
+  "currentAgents": current_agents | default({}),
+  "serverCurrentTimestampMs": current_timestamp_ms | default(0),
+  "initialPayload": payload_json,
+  "roundId": round_id,
+  "gameId": game_id,
+  "previewUrl": preview_action_url
+} | tojson }}</script>
+<script src="{{ url_for('static', path='js/round.js') }}?v={{ static_asset_version }}"></script>
+{% endblock %}
