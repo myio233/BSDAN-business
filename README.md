@@ -1,40 +1,32 @@
 # BSDAN Business Simulator
 
-BSDAN Business Simulator is a FastAPI web app for running a multi-round business simulation inspired by classroom competition workflows. Players make operating decisions for production, hiring, salary, financing, marketing, pricing, quality, management, and research. The app settles those decisions against shared market rules and produces browser reports for single-player and multiplayer sessions.
+BSDAN Business Simulator 是一个网页版商业模拟系统。玩家以公司经营者的身份参加 4 轮经营决策，在每一轮决定生产、招聘、薪资、贷款、市场代理、营销投入、定价、质量投入、管理投入和研发投入。系统会根据市场规则自动结算销量、利润、现金、债务、排名和每轮财报。
 
-This public repository contains the application code, modeling code, tests, deployment examples, developer documentation, and the workbook inputs required to run the game. Screenshots, generated reports, runtime storage, and credentials are intentionally excluded.
+这个仓库已经包含运行游戏所需的表格数据，克隆后安装依赖即可运行。
 
-## What Is Included
+## 适合谁使用
 
-- `exschool_game/` - FastAPI app, templates, static assets, simulation engine, auth, multiplayer room state, finance, inventory, workforce, research, market allocation, and report rendering.
-- `scripts/` - operational scripts for launching the app, validating browser flows, generating fixed opponents, and rebuilding derived workbooks when private inputs are available locally.
-- `obos/` - analysis and modeling utilities used to fit or inspect market-allocation behavior from locally supplied data.
-- `tests/` - pytest coverage for the engine, finance, inventory, modeling, report payloads, auth-related flows, and multiplayer behavior.
-- `deploy/` - generic systemd, nginx, and environment examples. Replace example values before using them on a server.
-- `docs/` - design notes, run logs, model notes, planning notes, and operational lessons.
-- `skills/` - local workflow helpers used during data extraction and governance work.
+- 想练习商赛经营决策的学生
+- 想组织课堂模拟或训练赛的老师、助教
+- 想复盘不同价格、产量、营销和人力策略影响的参赛队伍
+- 想在本地或服务器上部署一套多人商业模拟工具的组织者
 
-## What Is Not Included
+## 功能概览
 
-The public GitHub repo deliberately excludes these files, but the local checkout may keep them as ignored private inputs for development and testing:
+- 单人 4 轮经营模拟
+- 高强度固定对手模式
+- 真实原版竞争模式
+- 多人房间对战
+- 自动生成每轮财报
+- 排名、净资产、利润、销量和市场表现统计
+- 市场报告订阅与展示
+- 经营历史保存
+- 报告页面截图/图片导出
+- 邮箱验证码注册和登录
 
-- `.env` files and real service credentials.
-- `storage/` runtime state, session secrets, user game data, and report caches.
-- OCR screenshots and private images.
-- Generated output directories other than required game workbooks, such as `generated_reports/`.
-- Browser validation screenshots and Playwright MCP traces.
-- Virtual environments and local cache folders.
+## 快速开始
 
-The `.gitignore` blocks these classes of files so they are not accidentally recommitted.
-
-## Requirements
-
-- Python 3.12 or compatible Python 3.x runtime.
-- `pip` and `venv`.
-- Optional: Playwright browser dependencies for browser validation scripts.
-- Optional: Tesseract and Azure Document Intelligence credentials for OCR/data extraction scripts. These are not needed to run the core app.
-
-Install dependencies:
+先准备 Python 环境。推荐 Python 3.12。
 
 ```bash
 python3 -m venv .venv
@@ -42,115 +34,240 @@ python3 -m venv .venv
 pip install -r requirements-exschool-game.txt
 ```
 
-## Run Locally
-
-Start the web app:
+启动网站：
 
 ```bash
-. .venv/bin/activate
 uvicorn exschool_game.app:app --reload --host 127.0.0.1 --port 8010
 ```
 
-Then open:
+然后在浏览器打开：
 
 ```text
 http://127.0.0.1:8010
 ```
 
-The production-style helper script expects `.venv/bin/python` to exist:
+也可以使用启动脚本：
 
 ```bash
 EXSCHOOL_HOST=127.0.0.1 EXSCHOOL_PORT=8010 ./scripts/start_exschool_game.sh
 ```
 
-## Configuration
+## 第一次进入游戏
 
-Most runtime configuration is via environment variables. Start from:
+打开首页后，可以选择：
+
+- **高强度竞争**：适合练习。系统会使用更强的固定对手，默认策略压力更大。
+- **真实原版竞争**：对手决策来自已整理的历史比赛数据，更适合复盘。
+- **多人对战**：创建或加入房间，和其他玩家在同一场比赛中提交决策。
+
+单人模式不需要等待其他玩家。多人模式需要房主创建房间，其他玩家加入并准备后开始。
+
+## 单人模式玩法
+
+1. 选择单人模式。
+2. 输入公司名称。
+3. 选择主场城市。
+4. 进入第 1 轮经营页。
+5. 填写本轮决策。
+6. 提交后查看本轮财报。
+7. 进入下一轮，直到第 4 轮结束。
+8. 查看最终总结。
+
+每轮都可以调整经营策略。系统会根据上一轮的现金、债务、员工、库存、市场代理和研发状态继续结算下一轮。
+
+## 多人模式玩法
+
+多人模式适合课堂、训练营或团队对抗。
+
+房主流程：
+
+1. 登录账号。
+2. 进入多人模式。
+3. 创建房间。
+4. 设置房间名称、席位和机器人数量。
+5. 等待玩家加入并准备。
+6. 开始对局。
+
+玩家流程：
+
+1. 登录账号。
+2. 输入房间码或从链接进入房间。
+3. 选择席位。
+4. 标记准备。
+5. 开始后按轮次提交决策。
+
+所有玩家提交后，系统会结算当前轮并生成财报。房主或系统流程会推动进入下一轮。
+
+## 决策项说明
+
+每轮主要需要决定以下内容。
+
+**贷款**
+
+增加或减少银行贷款。贷款会增加现金，但也会产生利息和债务压力。
+
+**员工**
+
+决定工人和工程师人数。工人影响零件生产能力，工程师影响成品生产能力。薪资过低可能导致离职，人数减少可能产生裁员成本。
+
+**薪资**
+
+工资会影响成本，也会影响生产效率和员工稳定性。
+
+**生产计划**
+
+决定本轮计划生产的产品数量。实际产量会受到现金、工人产能、工程师产能、零件和库存影响。
+
+**市场代理**
+
+增加代理可以打开或增强市场销售渠道，但需要支付成本。减少代理也可能产生费用。
+
+**营销投入**
+
+营销会提高市场竞争力，但投入过高会占用现金。
+
+**价格**
+
+价格影响收入和竞争力。价格过高可能降低销量，价格过低可能压缩利润。
+
+**质量投入**
+
+质量投入影响产品竞争力，也会增加成本。
+
+**管理投入**
+
+管理投入影响公司管理指数，对经营表现和市场竞争力有影响。
+
+**研发投入**
+
+研发可能产生专利。专利会影响后续生产成本和竞争表现。
+
+**市场报告**
+
+订阅市场报告可以看到更多市场信息，但需要支付费用。现金不足时，系统可能无法购买所有计划订阅的报告。
+
+## 财报怎么看
+
+每轮提交后会进入财报页。重点关注：
+
+- **排名**：本轮结算后的相对位置。
+- **销售收入**：实际卖出的产品带来的收入。
+- **净利润**：扣除生产、人力、营销、管理、质量、研发、利息和税费后的结果。
+- **现金**：公司当前可用资金。
+- **债务**：当前银行贷款和利息后的债务。
+- **净资产**：资产减债务后的公司价值。
+- **市场表现**：每个市场的销量、份额、价格、代理和营销情况。
+- **库存**：未使用零件和未售出产品会影响下一轮。
+- **人力资源**：员工招聘、离职、晋升和薪资情况。
+
+最终总结页会汇总 4 轮经营结果。
+
+## 账号和邮箱
+
+系统支持账号注册、登录和邮箱验证码。
+
+本地练习时可以只使用本地默认配置。正式部署给多人使用时，建议配置 SMTP 邮箱服务，这样用户可以正常接收验证码。
+
+环境变量示例在：
 
 ```text
 deploy/exschool-game.env.example
 ```
 
-Important variables:
+常用配置：
 
-- `EXSCHOOL_SESSION_SECRET` - set this to a long random value in production.
-- `EXSCHOOL_AUTH_SITE_NAME` - display name/domain used by auth email copy.
-- `SMTP_*` - SMTP settings for email verification codes.
-- `EXSCHOOL_HOST` and `EXSCHOOL_PORT` - bind address used by the launch script.
-- `EXSCHOOL_ROOT_PATH` - optional URL prefix when reverse-proxying under a path.
+- `EXSCHOOL_SESSION_SECRET`：生产环境必须设置为足够长的随机字符串。
+- `EXSCHOOL_AUTH_SITE_NAME`：邮件和页面中显示的网站名称。
+- `SMTP_HOST`、`SMTP_PORT`、`SMTP_USER`、`SMTP_PASSWORD`：邮箱服务配置。
+- `EXSCHOOL_HOST`、`EXSCHOOL_PORT`：服务监听地址和端口。
+- `EXSCHOOL_ROOT_PATH`：反向代理到子路径时使用。
 
-Do not commit real `.env` files.
+不要把真实 `.env` 文件提交到 Git。
 
-## Tests
+## 部署到服务器
 
-Run unit and integration tests:
+最简单的方式是先在服务器上按“快速开始”安装依赖，再用启动脚本运行。
+
+```bash
+EXSCHOOL_HOST=0.0.0.0 EXSCHOOL_PORT=8010 ./scripts/start_exschool_game.sh
+```
+
+如果需要长期运行，可以参考：
+
+```text
+deploy/exschool-game.service
+deploy/nginx-location.example.conf
+```
+
+部署前请确认：
+
+- 已设置 `EXSCHOOL_SESSION_SECRET`
+- 已配置 SMTP，或者确认不需要开放邮箱注册
+- `storage/` 目录可写
+- 反向代理的端口、路径和 HTTPS 配置正确
+
+## 检查是否可以运行
+
+可以运行预检脚本：
+
+```bash
+. .venv/bin/activate
+python scripts/launch_preflight.py
+```
+
+看到以下项目为 `PASS`，说明核心运行数据和模拟器加载正常：
+
+- `private-data`
+- `simulator`
+- `start-script`
+
+SMTP 未配置时会出现 `smtp` 警告；这只影响邮箱验证码，不影响本地启动和单人模拟。
+
+## 测试
+
+运行完整测试：
 
 ```bash
 . .venv/bin/activate
 pytest -q
 ```
 
-By default, tests that require private source workbooks under `exschool/` are skipped when those files are absent. To run the full private-data suite on a local machine that has those ignored inputs restored:
+当前仓库包含游戏运行表格，正常情况下测试会直接运行完整套件。
 
-```bash
-pytest -q --run-private-data
+## 常见问题
+
+**浏览器打不开页面**
+
+确认服务已经启动，并且地址和端口正确。默认地址是：
+
+```text
+http://127.0.0.1:8010
 ```
 
-Run selected browser validation scripts after installing Playwright:
+**提示端口已被占用**
+
+换一个端口启动：
+
+```bash
+uvicorn exschool_game.app:app --reload --host 127.0.0.1 --port 8020
+```
+
+**注册收不到验证码**
+
+检查 SMTP 配置。没有配置 SMTP 时，本地页面仍可运行，但邮箱验证码发送不可用。
+
+**多人房间状态异常**
+
+确认服务进程可以写入 `storage/` 目录。多人房间、用户状态和运行缓存会保存在运行时存储中。
+
+**财报图片无法生成**
+
+报告图片导出依赖浏览器渲染环境。如果服务器缺少 Playwright/Chromium 相关依赖，可以先安装：
 
 ```bash
 playwright install chromium
-python scripts/validate_exschool_modes_playwright.py --base-url http://127.0.0.1:8010
-python scripts/validate_multiplayer_room_playwright.py --base-url http://127.0.0.1:8010
 ```
 
-Browser scripts may create screenshots and summaries under ignored output folders.
+**想重置本地运行状态**
 
-## Repository Layout
-
-```text
-.
-├── deploy/                 # Generic deployment examples
-├── docs/                   # Design notes, plans, run logs, model notes
-├── exschool_game/          # FastAPI app and simulation package
-├── obos/                   # Data-analysis and model-fitting utilities
-├── scripts/                # Launch, validation, and data rebuild scripts
-├── skills/                 # Local workflow helpers
-├── tests/                  # Pytest suite
-├── requirements-exschool-game.txt
-└── README.md
-```
-
-## Data Rebuild Workflow
-
-Some scripts can rebuild derived decision workbooks or market-report exports, but they require private local inputs that are not part of this repository. Place private inputs in the ignored local directories expected by the scripts, run the rebuild, and keep generated files out of Git unless they have been explicitly sanitized and reviewed.
-
-Useful scripts:
-
-- `scripts/build_real_original_fixed_decisions_workbook.py`
-- `scripts/generate_smart_fixed_opponents.py`
-- `skills/image-report-html-table/scripts/export_market_report_tables.py`
-- `obos/reconstruct_exschool_decisions.py`
-
-## Deployment Notes
-
-Deployment examples are intentionally generic:
-
-- `deploy/exschool-game.service` assumes the app lives at `/opt/exschool-game`.
-- `deploy/nginx-location.example.conf` shows reverse proxy settings for serving the app under `/asdan/`.
-- `deploy/exschool-game.env.example` contains placeholder environment variables only.
-
-Before deploying, set a real session secret, configure SMTP, choose your hostname, and confirm that runtime storage is writable by the service user.
-
-## Public-Repo Hygiene
-
-Before pushing changes, run local privacy checks for:
-
-- provider tokens and API credentials
-- private key blocks
-- machine-specific absolute paths
-- environment files
-- personal identifiers
-- raw workbook, image, PDF, and generated report artifacts
-
-Expected matches should be code variable names, test fixtures, or documentation examples only. Raw workbooks, screenshots, keys, and runtime state should not appear.
+停止服务后清理 `storage/` 中的运行数据即可。清理前请确认不需要保留已有用户、房间和历史记录。
