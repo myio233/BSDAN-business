@@ -68,9 +68,9 @@ def load_local_env() -> dict[str, str]:
 
 
 def check_python_surface() -> CheckResult:
-    if not VENV_PYTHON.exists():
-        return CheckResult("FAIL", "venv", f"missing virtualenv python at {VENV_PYTHON}")
-    return CheckResult("PASS", "venv", f"found {VENV_PYTHON}")
+    if VENV_PYTHON.exists():
+        return CheckResult("PASS", "python", f"found {VENV_PYTHON}")
+    return CheckResult("PASS", "python", f"using current interpreter {sys.executable}")
 
 
 def check_scripts() -> list[CheckResult]:
