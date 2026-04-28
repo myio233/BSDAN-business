@@ -8,20 +8,39 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-import pandas as pd
-
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 VENV_PYTHON = ROOT_DIR / ".venv" / "bin" / "python"
 START_SCRIPT = ROOT_DIR / "scripts" / "start_exschool_game.sh"
-LAUNCH_SCRIPT = ROOT_DIR / "scripts" / "validate_launch_readiness_playwright.sh"
-REVIEW_SCRIPT = ROOT_DIR / "scripts" / "review_exschool_browser_experience.sh"
 MULTIPLAYER_BROWSER_SCRIPT = ROOT_DIR / "scripts" / "validate_multiplayer_room_playwright.py"
-BASELINE_METRICS = ROOT_DIR / "generated_reports" / "model_pipeline_current_baseline" / "metrics.csv"
 LOCAL_ENV_FILES = [ROOT_DIR / ".env.local", ROOT_DIR / ".smtp.env.local"]
 SMTP_KEYS = ("SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD")
+EXSCHOOL_DIR = ROOT_DIR / "exschool"
+INFERRED_DECISIONS_DIR = ROOT_DIR / "outputs" / "exschool_inferred_decisions"
+REQUIRED_PRIVATE_FILES = [
+    EXSCHOOL_DIR / "asdan_key_data_sheet.xlsx",
+    EXSCHOOL_DIR / "round_1_team13.xlsx",
+    EXSCHOOL_DIR / "round_2_team13.xlsx",
+    EXSCHOOL_DIR / "round_3_team13.xlsx",
+    EXSCHOOL_DIR / "round_4_team13.xlsx",
+    INFERRED_DECISIONS_DIR / "all_companies_numeric_decisions_smart.xlsx",
+    INFERRED_DECISIONS_DIR / "all_companies_numeric_decisions_real_original_fixed.xlsx",
+    INFERRED_DECISIONS_DIR / "all_round_reconstruction_summary.xlsx",
+]
+MARKET_REPORT_FILES = [
+    EXSCHOOL_DIR / "report1_market_reports.xlsx",
+    EXSCHOOL_DIR / "report2_market_reports.xlsx",
+    EXSCHOOL_DIR / "report3_market_reports.xlsx",
+    EXSCHOOL_DIR / "report4_market_reports.xlsx",
+]
+FIXED_MARKET_REPORT_FILES = [
+    EXSCHOOL_DIR / "report1_market_reports_fixed.xlsx",
+    EXSCHOOL_DIR / "report2_market_reports_fixed.xlsx",
+    EXSCHOOL_DIR / "report3_market_reports_fixed.xlsx",
+    EXSCHOOL_DIR / "report4_market_reports_fixed.xlsx",
+]
 
 
 @dataclass(slots=True)
@@ -60,14 +79,6 @@ def check_scripts() -> list[CheckResult]:
         results.append(CheckResult("PASS", "start-script", f"found {START_SCRIPT.name}"))
     else:
         results.append(CheckResult("FAIL", "start-script", f"missing {START_SCRIPT}"))
-    if LAUNCH_SCRIPT.exists():
-        results.append(CheckResult("PASS", "launch-script", f"found {LAUNCH_SCRIPT.name}"))
-    else:
-        results.append(CheckResult("FAIL", "launch-script", f"missing {LAUNCH_SCRIPT}"))
-    if REVIEW_SCRIPT.exists():
-        results.append(CheckResult("PASS", "review-script", f"found {REVIEW_SCRIPT.name}"))
-    else:
-        results.append(CheckResult("FAIL", "review-script", f"missing {REVIEW_SCRIPT}"))
     if MULTIPLAYER_BROWSER_SCRIPT.exists():
         results.append(CheckResult("PASS", "multiplayer-browser-script", f"found {MULTIPLAYER_BROWSER_SCRIPT.name}"))
     else:
@@ -81,21 +92,40 @@ def check_playwright_import() -> CheckResult:
     return CheckResult("PASS", "playwright", "python package importable")
 
 
-def check_canonical_baseline() -> CheckResult:
-    if not BASELINE_METRICS.exists():
-        return CheckResult("FAIL", "baseline", f"missing {BASELINE_METRICS}")
-    df = pd.read_csv(BASELINE_METRICS)
-    rows = df[
-        (df["variant"] == "current_runtime_default")
-        & (df["stage"] == "end_to_end_final_share")
-        & (df["dataset"].isin(["EXSCHOOL", "OBOS"]))
-    ]
-    if len(rows) != 2:
-        return CheckResult("FAIL", "baseline", "current_runtime_default end_to_end rows are incomplete")
-    exschool = float(rows.loc[rows["dataset"] == "EXSCHOOL", "r2"].iloc[0])
-    obos = float(rows.loc[rows["dataset"] == "OBOS", "r2"].iloc[0])
-    level = "PASS" if exschool > 0.95 and obos > 0.95 else "FAIL"
-    return CheckResult(level, "baseline", f"Exschool={exschool:.6f}, OBOS={obos:.6f}")
+def check_private_data_files() -> CheckResult:
+    missing = [path.relative_to(ROOT_DIR).as_posix() for path in REQUIRED_PRIVATE_FILES if not path.exists()]
+    market_reports_present = all(path.exists() for path in MARKET_REPORT_FILES) or all(path.exists() for path in FIXED_MARKET_REPORT_FILES)
+    if not market_reports_present:
+        missing.append("exschool/report[1-4]_market_reports(.xlsx or _fixed.xlsx)")
+    if missing:
+        return CheckResult(
+            "FAIL",
+            "private-data",
+            "missing required ignored runtime inputs: " + ", ".join(missing),
+        )
+    return CheckResult("PASS", "private-data", "required ignored workbooks are present locally")
+
+
+def check_simulator_runtime() -> CheckResult:
+    try:
+        from exschool_game.engine import get_simulator
+
+        simulator = get_simulator("high-intensity")
+        if simulator.market_df.empty:
+            return CheckResult("FAIL", "simulator", "market reports loaded as an empty dataframe")
+        if simulator.fixed_decisions_df.empty:
+            return CheckResult("FAIL", "simulator", "fixed opponent decisions loaded as an empty dataframe")
+        if len(simulator.round_contexts) != 4:
+            return CheckResult("FAIL", "simulator", f"expected 4 round contexts, got {len(simulator.round_contexts)}")
+        if not simulator.key_data.get("markets"):
+            return CheckResult("FAIL", "simulator", "key market data is empty")
+    except Exception as exc:
+        return CheckResult("FAIL", "simulator", f"{type(exc).__name__}: {exc}")
+    return CheckResult(
+        "PASS",
+        "simulator",
+        f"loaded {len(simulator.market_df)} market rows, {len(simulator.fixed_decisions_df)} fixed decisions, {len(simulator.round_contexts)} rounds",
+    )
 
 
 def check_real_original_coverage() -> CheckResult:
@@ -149,7 +179,8 @@ def main() -> int:
         check_python_surface(),
         *check_scripts(),
         check_playwright_import(),
-        check_canonical_baseline(),
+        check_private_data_files(),
+        check_simulator_runtime(),
         check_real_original_coverage(),
         check_smtp_prereq(env_from_files),
     ]

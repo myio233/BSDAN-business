@@ -2,7 +2,7 @@
 
 BSDAN Business Simulator is a FastAPI web app for running a multi-round business simulation inspired by classroom competition workflows. Players make operating decisions for production, hiring, salary, financing, marketing, pricing, quality, management, and research. The app settles those decisions against shared market rules and produces browser reports for single-player and multiplayer sessions.
 
-This public repository contains the application code, modeling code, tests, deployment examples, and developer documentation. Private source workbooks, screenshots, generated reports, runtime storage, and credentials are intentionally excluded.
+This public repository contains the application code, modeling code, tests, deployment examples, developer documentation, and the workbook inputs required to run the game. Screenshots, generated reports, runtime storage, and credentials are intentionally excluded.
 
 ## What Is Included
 
@@ -20,8 +20,8 @@ The public GitHub repo deliberately excludes these files, but the local checkout
 
 - `.env` files and real service credentials.
 - `storage/` runtime state, session secrets, user game data, and report caches.
-- Raw competition workbooks, OCR screenshots, and private images.
-- Generated output directories such as `outputs/` and `generated_reports/`.
+- OCR screenshots and private images.
+- Generated output directories other than required game workbooks, such as `generated_reports/`.
 - Browser validation screenshots and Playwright MCP traces.
 - Virtual environments and local cache folders.
 
