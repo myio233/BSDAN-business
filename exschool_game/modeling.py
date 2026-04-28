@@ -166,6 +166,22 @@ def build_cpi_to_share_feature_matrix(
 
     stock_units_est = stock_units_est_series.to_numpy(dtype=float)
     out["predicted_cpi"] = pred_cpi
+    population_raw = df.get("population", pd.Series(0.0, index=df.index, dtype=float)).fillna(0.0).clip(lower=0.0)
+    penetration_raw = df.get("penetration", pd.Series(0.0, index=df.index, dtype=float)).fillna(0.0).clip(lower=0.0)
+    out["population_log"] = np.log1p(population_raw)
+    out["penetration_raw"] = penetration_raw
+    out["market_size_log"] = np.log1p(market_size)
+    out["predicted_cpi_x_penetration"] = out["predicted_cpi"] * out["penetration_raw"]
+    out["prev_marketshare_raw"] = df.get(
+        "prev_marketshare_clean", pd.Series(0.0, index=df.index, dtype=float)
+    ).fillna(0.0).clip(lower=0.0, upper=1.0)
+    round_id = df["round"].astype(str).str.lower()
+    market_name = df["market"].astype(str).str.lower()
+    out["late_round_gate"] = round_id.isin({"r3", "r4"}).astype(float)
+    out["is_hangzhou_market"] = (market_name == "hangzhou").astype(float)
+    out["late_hangzhou_gate"] = out["late_round_gate"] * out["is_hangzhou_market"]
+    out["late_hangzhou_r4_gate"] = ((round_id == "r4") & (market_name == "hangzhou")).astype(float)
+    out["late_hangzhou_prev_share"] = out["prev_marketshare_raw"] * out["late_hangzhou_gate"]
     prev_util = df["prev_market_utilization_clean"].fillna(df["market_utilization_clean"]).fillna(0.0).clip(lower=0.0, upper=1.0)
     out["market_slack"] = (1.0 - prev_util).clip(lower=0.0, upper=1.0)
     out["stock_to_demand_ratio"] = np.clip(
@@ -322,4 +338,30 @@ def predict_share_from_cpi_model(
 
     delta_pred = np.clip(raw_pred, -1.0, 1.0)
     share_pred = np.clip(base_share + delta_pred, 0.0, 1.0)
+    calibrator = share_model.get("late_hangzhou_residual_calibrator")
+    if calibrator:
+        gate_column = str(calibrator.get("gate_column", ""))
+        prev_share_column = str(calibrator.get("prev_share_column", ""))
+        if gate_column in share_X.columns and prev_share_column in share_X.columns:
+            gate = share_X[gate_column].to_numpy(dtype=float) > 0.0
+            prev_share = share_X[prev_share_column].to_numpy(dtype=float)
+            cpi_threshold = float(calibrator.get("cpi_threshold", 0.0) or 0.0)
+            prev_share_threshold = float(calibrator.get("prev_share_threshold", 0.0) or 0.0)
+            ceiling_multiplier = float(calibrator.get("share_ceiling_multiplier", 1.0) or 1.0)
+            prev_share_slope = float(calibrator.get("prev_share_slope", 0.0) or 0.0)
+            max_adjustment = float(calibrator.get("max_adjustment", 0.0) or 0.0)
+            comparison_ceiling = prev_share * ceiling_multiplier
+            eligible = (
+                gate
+                & (base_share >= cpi_threshold)
+                & (prev_share >= prev_share_threshold)
+                & (share_pred < comparison_ceiling)
+            )
+            adjustment = np.minimum(
+                max_adjustment,
+                np.minimum(prev_share * prev_share_slope, comparison_ceiling - share_pred),
+            )
+            adjustment = np.where(eligible, np.maximum(adjustment, 0.0), 0.0)
+            share_pred = np.clip(share_pred + adjustment, 0.0, 1.0)
+            delta_pred = np.clip(share_pred - base_share, -1.0, 1.0)
     return share_pred, delta_pred

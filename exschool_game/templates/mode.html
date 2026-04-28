@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "_page_macros.html" as page %}
 {% block content %}
+{% set high_intensity_setup_url = request.url_for('single_fixed_setup') %}
 {% set real_original_setup_url = request.url_for('single_real_setup') %}
 {% set multiplayer_setup_url = request.url_for('multiplayer_setup') %}
 <section class="hero" style="display: block; text-align: center; padding-top: 60px; padding-bottom: 40px; border: none; background: transparent; box-shadow: none;">
@@ -13,6 +14,15 @@
 </section>
 
 <section class="mode-grid" style="max-width: 800px; margin: 0 auto;">
+  {{ page.mode_option_card(
+    '高强度竞争',
+    '其它队伍使用 smart fixed opponents，对默认策略施加更强竞争压力，适合练习和压力测试。',
+    ['4 轮经营', '智能固定对手', '高竞争强度', 'smart workbook'],
+    high_intensity_setup_url,
+    '开始高强度竞争',
+    'mode-card-high-intensity'
+  ) }}
+
   {{ page.mode_option_card(
     '真实原版竞争',
     '当前 source-faithful 的 23 队模式。其它队伍使用从真实比赛财报反推回来的固定输入，更接近现有来源能还原出的历史比赛原貌。',

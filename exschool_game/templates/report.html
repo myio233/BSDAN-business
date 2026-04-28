@@ -5,7 +5,10 @@
 {% set asset_accounting = report.asset_accounting|default({}, true) %}
 {% set total_assets_label = asset_accounting.total_assets_label|default('总资产', true) %}
 {% set net_assets_label = asset_accounting.net_assets_label|default('净资产', true) %}
-{% if is_multiplayer and mode_key == 'real-original' %}
+{% if mode_key == 'high-intensity' %}
+{% set mode_label = '高强度竞争' %}
+{% set mode_summary = '本轮财报对应 smart fixed opponents 高强度竞争模式，对手输入来自智能固定决策。' %}
+{% elif is_multiplayer and mode_key == 'real-original' %}
 {% set mode_label = '真实原版竞争' %}
 {% set participant_label = multiplayer_participant_count|string if multiplayer_participant_count else '当前房间' %}
 {% set mode_summary = '本轮财报只统计当前多人房间内的 ' ~ participant_label ~ ' 支参赛队伍；排名、曲线和财务结算都不再混入房间外队伍。' %}

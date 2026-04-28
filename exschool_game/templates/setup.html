@@ -1,7 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 {% set mode_key = single_player_mode|default('real-original') %}
-{% if mode_key == 'real-original' %}
+{% if mode_key == 'high-intensity' %}
+{% set mode_label = '高强度竞争' %}
+{% set mode_kicker = 'Smart fixed opponents' %}
+{% set mode_summary = '本局其它队伍会使用智能固定对手输入，适合做更强竞争压力下的练习。' %}
+{% elif mode_key == 'real-original' %}
 {% set mode_label = '真实原版竞争' %}
 {% set mode_kicker = '23 队 source-faithful' %}
 {% set mode_summary = '本局其它队伍会使用当前 source-faithful 23 队原始资料反推的固定决策输入，按同一套引擎逐轮结算。' %}
@@ -11,7 +15,7 @@
 {% set mode_kicker = '23 队 source-faithful' %}
 {% set mode_summary = '高强度竞争已关闭；本局使用真实原版竞争。' %}
 {% endif %}
-{% set start_action = request.url_for('single_real_start') %}
+{% set start_action = request.url_for('single_fixed_start') if mode_key == 'high-intensity' else request.url_for('single_real_start') %}
 {% if error %}
 <section class="alert">{{ error }}</section>
 {% endif %}

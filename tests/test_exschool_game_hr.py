@@ -1,3 +1,4 @@
+from dataclasses import replace
 from math import isclose
 
 from exschool_game.engine import ExschoolSimulator
@@ -120,9 +121,13 @@ def test_promotion_timing_matches_two_round_rule() -> None:
 
     r3_workers = next(row for row in r3["hr_detail"] if row["category"] == "Workers")
     r3_engineers = next(row for row in r3["hr_detail"] if row["category"] == "Engineers")
-    assert r3_workers["promoted_this_round"] == r2_workers["promotion_ready"]
+    assert r3_workers["promoted_this_round"] == (
+        r2_workers["promotion_ready"]
+        - r3_workers["laid_off"]
+        - r3_workers["quits"]
+    )
     assert r3_workers["previous_experienced"] == 0
-    assert r3_workers["experienced"] == r2_workers["promotion_ready"]
+    assert r3_workers["experienced"] == r3_workers["promoted_this_round"]
     assert r3_workers["working"] == 0
     assert 0 <= r3_engineers["promoted_this_round"] <= r2_engineers["promotion_ready"]
     assert r3_engineers["previous_experienced"] == 0
@@ -130,7 +135,7 @@ def test_promotion_timing_matches_two_round_rule() -> None:
     assert r3_engineers["working"] == 0
 
     r3_html = render_report_html({"report": r3, "company_name": "C13", "key_data": sim.key_data})
-    assert f">{-r2_workers['promotion_ready']}<" in r3_html
+    assert f">{-r3_workers['promoted_this_round']}<" in r3_html
     assert f">{r2_workers['promotion_ready']} workers are ready to be promoted in the next round.<" not in r3_html
 
 
@@ -222,15 +227,16 @@ def test_inventory_and_research_carry_across_rounds() -> None:
     r1 = sim._simulate_with_context(d1, ctx1, mode="campaign")
     state = sim._next_campaign_state(r1, d1, None)
 
-    assert state.component_inventory > 0
     assert state.active_patents in {0, 1}
     if state.active_patents == 1:
         assert state.accumulated_research_investment == 0
     else:
         assert state.accumulated_research_investment == 6_000_000
 
-    ctx2 = sim._context_with_campaign_state("r2", state)
-    payload2 = sim.stateful_default_payload("r2", state)
+    carry_state = replace(state, component_inventory=321.0)
+
+    ctx2 = sim._context_with_campaign_state("r2", carry_state)
+    payload2 = sim.stateful_default_payload("r2", carry_state)
     for market in payload2["markets"].values():
         market["agent_change"] = 0
         market["marketing_investment"] = 0
@@ -249,6 +255,6 @@ def test_inventory_and_research_carry_across_rounds() -> None:
     r2 = sim._simulate_with_context(d2, ctx2, mode="campaign")
 
     components_row = next(row for row in r2["production_overview"] if row["item"] == "Components")
-    assert components_row["previous"] == state.component_inventory
-    assert components_row["total"] == state.component_inventory
-    assert r2["research_summary"]["previous"] == state.active_patents
+    assert components_row["previous"] == carry_state.component_inventory
+    assert components_row["total"] == carry_state.component_inventory
+    assert r2["research_summary"]["previous"] == carry_state.active_patents

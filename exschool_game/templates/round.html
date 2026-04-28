@@ -2,7 +2,10 @@
 {% import "_page_macros.html" as page %}
 {% block content %}
 {% set mode_key = single_player_mode|default('real-original') %}
-{% if is_multiplayer and mode_key == 'real-original' %}
+{% if mode_key == 'high-intensity' %}
+{% set mode_label = '高强度竞争' %}
+{% set mode_summary = '本轮对手输入来自 smart fixed opponents；你和其它队伍仍走同一套结算规则。' %}
+{% elif is_multiplayer and mode_key == 'real-original' %}
 {% set mode_label = '真实原版竞争' %}
 {% set participant_label = multiplayer_participant_count|string if multiplayer_participant_count else '当前房间' %}
 {% set mode_summary = '本轮只结算当前多人房间内的 ' ~ participant_label ~ ' 支参赛队伍；参数来源仍使用真实原版数据口径，但不会再混入房间外队伍。' %}

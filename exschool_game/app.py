@@ -120,21 +120,22 @@ REPORT_IMAGE_CACHE_MAX_FILES = int(os.environ.get("REPORT_IMAGE_CACHE_MAX_FILES"
 HOME_CITY_OPTIONS = ["Shanghai", "Chengdu", "Wuhan", "Wuxi", "Ningbo"]
 SINGLE_PLAYER_MODE_DEFAULT = "real-original"
 SINGLE_PLAYER_MODE_LABELS = {
+    "high-intensity": "高强度竞争",
     "real-original": "真实原版竞争",
 }
 MULTIPLAYER_MODE_LABEL = "实时多人对战"
 SINGLE_PLAYER_MODE_ALIASES = {
     "single": SINGLE_PLAYER_MODE_DEFAULT,
-    "fixed": "real-original",
-    "fixed-opponent": "real-original",
-    "fixed_opponent": "real-original",
-    "single-fixed": "real-original",
-    "single-fixed-opponent": "real-original",
-    "single_fixed_opponent": "real-original",
-    "smart": "real-original",
-    "high-intensity": "real-original",
-    "high_intensity": "real-original",
-    "practice": "real-original",
+    "fixed": "high-intensity",
+    "fixed-opponent": "high-intensity",
+    "fixed_opponent": "high-intensity",
+    "single-fixed": "high-intensity",
+    "single-fixed-opponent": "high-intensity",
+    "single_fixed_opponent": "high-intensity",
+    "smart": "high-intensity",
+    "high-intensity": "high-intensity",
+    "high_intensity": "high-intensity",
+    "practice": "high-intensity",
     "real": "real-original",
     "real-opponent": "real-original",
     "real_opponent": "real-original",
@@ -2964,7 +2965,7 @@ async def single_setup(request: Request, mode: str = SINGLE_PLAYER_MODE_DEFAULT)
 
 @app.get("/single-fixed/setup", response_class=HTMLResponse)
 async def single_fixed_setup(request: Request) -> HTMLResponse:
-    return await single_setup(request, mode="real-original")
+    return await single_setup(request, mode="high-intensity")
 
 
 @app.get("/single-real/setup", response_class=HTMLResponse)
@@ -3054,7 +3055,7 @@ async def single_start(request: Request) -> HTMLResponse:
 
 @app.post("/single-fixed/start", response_class=HTMLResponse)
 async def single_fixed_start(request: Request) -> HTMLResponse:
-    return await _single_start_impl(request, mode_override="real-original")
+    return await _single_start_impl(request, mode_override="high-intensity")
 
 
 @app.post("/single-real/start", response_class=HTMLResponse)

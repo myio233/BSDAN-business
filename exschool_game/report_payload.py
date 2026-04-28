@@ -102,10 +102,10 @@ def build_market_report_summaries(
     return summaries
 
 
-def build_report_notes(mode: str, current_team_id: str) -> list[str]:
+def build_report_notes(mode: str, current_team_id: str = "13") -> list[str]:
     controlled_team_label = f"当前队伍 C{current_team_id}"
     notes = [
-        f"所选轮次中，所有队伍都会按统一规则从各自决策出发参与同一轮竞争；当前展示的是 {controlled_team_label} 的真实结算结果。",
+        f"所选轮次中，所有队伍都会按统一规则从各自决策出发参与同一轮竞争；Team {current_team_id} 使用当前输入，当前展示的是 {controlled_team_label} 的真实结算结果。",
         f"当前模型已把主场城市是否等于当前市场作为额外特征，因此你在开局页选择的主场城市会影响 {controlled_team_label} 的 CPI 与份额预测。",
         "每个市场的销量按以下规则分配：先用 CPI 模型算出每支队伍的理论竞争力，再结合价格/管理/市场/质量相对强弱与市场饱和度，把理论 CPI 映射成理论份额；"
         "再以 min(货量, 理论份额对应销量) 作为初步销量，所有参赛队伍都会按各自该轮 products_planned 在所选市场之间按理论份额需求比例分摊货量；"

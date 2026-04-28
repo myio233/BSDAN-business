@@ -1669,7 +1669,7 @@ class ExschoolSimulator:
             if parsed:
                 explicit_selected_markets.add(market)
 
-        use_explicit_selection = has_explicit_selection
+        use_explicit_selection = has_explicit_selection and bool(explicit_selected_markets)
 
         market_decisions: dict[str, MarketDecision] = {}
         for market in self.key_data["markets"].keys():
@@ -2361,7 +2361,12 @@ class ExschoolSimulator:
                 {"category": "工程师", "working": int(summary_row.get("engineers_est", 0) or 0), "salary": float(summary_row.get("engineer_salary_est", 0.0) or 0.0)},
             ],
             "hr_detail": [],
-            "management_summary": {"管理指数": float(summary_row.get("management_index_source", 0.0) or 0.0)},
+            "management_summary": {
+                "planned_investment": float(summary_row.get("management_investment_est", 0.0) or 0.0),
+                "investment": float(summary_row.get("management_investment_est", 0.0) or 0.0),
+                "index": float(summary_row.get("management_index_source", 0.0) or 0.0),
+                "管理指数": float(summary_row.get("management_index_source", 0.0) or 0.0),
+            },
             "production_summary": {
                 "计划生产": int(summary_row.get("products_planned_est", 0) or 0),
                 "实际销量": float(summary_row.get("sales_units_source", 0.0) or 0.0),

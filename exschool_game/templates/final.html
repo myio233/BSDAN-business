@@ -2,7 +2,10 @@
 {% import "_page_macros.html" as page %}
 {% block content %}
 {% set mode_key = single_player_mode|default('real-original') %}
-{% if mode_key == 'real-original' %}
+{% if mode_key == 'high-intensity' %}
+{% set mode_label = '高强度竞争' %}
+{% set mode_summary = '本局最终总结对应 smart fixed opponents 高强度竞争模式。' %}
+{% elif mode_key == 'real-original' %}
 {% set mode_label = '真实原版竞争' %}
 {% set mode_summary = '本局最终总结对应当前 source-faithful 23 队真实原版竞争模式，对手输入来自真实比赛反推决策。' %}
 {% else %}
