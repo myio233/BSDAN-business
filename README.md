@@ -16,7 +16,7 @@ This public repository contains the application code, modeling code, tests, depl
 
 ## What Is Not Included
 
-The public repo deliberately excludes:
+The public GitHub repo deliberately excludes these files, but the local checkout may keep them as ignored private inputs for development and testing:
 
 - `.env` files and real service credentials.
 - `storage/` runtime state, session secrets, user game data, and report caches.
