@@ -153,9 +153,9 @@
    - `./.venv/bin/pip install -r requirements-exschool-game.txt`
    - `./.venv/bin/python -m py_compile skills/image-report-html-table/scripts/export_market_report_tables.py obos/reconstruct_exschool_decisions.py`
    - `./.venv/bin/python skills/image-report-html-table/scripts/export_market_report_tables.py --preset exschool`
-     - now runs successfully in the project checkout and rewrites `outputs/exschool_market_report_exports/`
+     - now runs successfully in `.` and rewrites `outputs/exschool_market_report_exports/`
    - `EXSCHOOL_MARKET_REPORT_DIR=outputs/exschool_market_report_exports/structured_xlsx ./.venv/bin/python obos/reconstruct_exschool_decisions.py`
-     - now runs successfully in the project checkout and rewrites `outputs/exschool_inferred_decisions/`
+     - now runs successfully in `.` and rewrites `outputs/exschool_inferred_decisions/`
    - `./.venv/bin/python scripts/build_real_original_fixed_decisions_workbook.py`
      - still produces `92` rows covering `23` teams and rounds `r1..r4`
    - `./.venv/bin/python scripts/validate_exschool_modes_playwright.py`

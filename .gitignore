@@ -17,6 +17,22 @@ __pycache__/
 *.key
 *.crt
 
+storage/
+outputs/
+generated_reports/
+.playwright-mcp/
+.serena/
+.tmp_playwright/
+playwright-*.md
+bsdan-*.png
+
+# Private source data and generated analysis artifacts.
+WYEF/
+WYEF_results/
+training1/
+southtraining/
+exschool/
+结果/
 *.xlsx
 *.xls
 *.csv
@@ -26,19 +42,4 @@ __pycache__/
 *.tif
 *.tiff
 *.pdf
-
-storage/
-outputs/
-generated_reports/
-.playwright-mcp/
-.tmp_playwright/
-playwright-*.md
-bsdan-*.png
-
-WYEF/
-WYEF_results/
-training1/
-southtraining/
-exschool/
-结果/
 *.xlsx:Zone.Identifier
