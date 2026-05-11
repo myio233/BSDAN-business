@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% import "_page_macros.html" as page %}
+{% block body_data_attrs %} data-page-key="auth" data-page-data-id="auth-page-data"{% endblock %}
+{% block content %}
+<section class="auth-shell auth-shell-minimal">
+  <a href="{{ request.url_for('home') }}" class="auth-wordmark">bsdan</a>
+  <section class="panel auth-card">
+    <nav class="auth-switch" aria-label="认证方式切换">
+      {{ page.action_link(((request.url_for('auth_page') | string) ~ '?mode=login'), '登录', 'auth-switch-item' ~ (' auth-switch-item-active' if auth_mode == 'login' else '')) }}
+      {{ page.action_link(((request.url_for('auth_page') | string) ~ '?mode=register'), '注册', 'auth-switch-item' ~ (' auth-switch-item-active' if auth_mode == 'register' else '')) }}
+    </nav>
+
+  {{ page.alert(auth_error) }}
+  {{ page.alert(auth_message, 'alert success') }}
+
+    {% if auth_mode == 'login' %}
+    <section class="auth-panel">
+      <form method="post" action="{{ request.url_for('auth_login') }}" class="auth-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+        <label>
+          <span>用户名或邮箱</span>
+          <input type="text" name="account" value="{{ auth_values.account or '' }}" autocomplete="username" required />
+        </label>
+        <label>
+          <span>密码</span>
+          <input type="password" name="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="button-primary">登录</button>
+      </form>
+    </section>
+    {% else %}
+    <section class="auth-panel">
+      <form id="register-form" method="post" action="{{ request.url_for('auth_register') }}" class="auth-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+        <label>
+          <span>用户名</span>
+          <input type="text" name="name" value="{{ auth_values.name or '' }}" autocomplete="nickname" required />
+        </label>
+        <label>
+          <span>邮箱</span>
+          <input id="register-email" type="email" name="email" value="{{ auth_values.email or '' }}" autocomplete="email" required />
+        </label>
+        <div class="auth-inline">
+          <label>
+            <span>验证码</span>
+            <input type="text" name="code" inputmode="numeric" maxlength="6" required />
+          </label>
+          <div class="auth-inline-button">
+            <span>邮箱验证</span>
+            <button type="button" class="ghost" id="send-code-button" data-url="{{ request.url_for('auth_send_email_code') }}">发送验证码</button>
+          </div>
+        </div>
+        <label>
+          <span>密码</span>
+          <input type="password" name="password" autocomplete="new-password" minlength="6" required />
+        </label>
+        <p id="code-status" class="auth-status"></p>
+        <button type="submit" class="button-primary">注册</button>
+      </form>
+    </section>
+    {% endif %}
+  </section>
+</section>
+{% endblock %}
+
+{% block page_scripts %}
+<script id="auth-page-data" type="application/json">{{ {
+  "sendCodeUrl": (request.url_for('auth_send_email_code') | string),
+  "codePurpose": "register",
+  "defaultCooldownSeconds": 60,
+  "sendButtonLabel": "发送验证码",
+  "missingEmailMessage": "请先输入邮箱地址。",
+  "sendingMessage": "正在发送验证码...",
+  "sendFailedMessage": "验证码发送失败。",
+  "networkFailedMessage": "验证码发送失败，请稍后再试。",
+  "sendSuccessMessage": "验证码已发送。"
+} | tojson }}</script>
+<script src="{{ url_for('static', path='js/auth.js') }}?v={{ static_asset_version }}"></script>
+{% endblock %}

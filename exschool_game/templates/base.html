@@ -1,0 +1,48 @@
+{% import "_page_macros.html" as page %}
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content="{{ csrf_token }}" />
+    <title>{{ title or "Exschool 商赛模拟器" }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}?v={{ static_asset_version }}" />
+  </head>
+  <body class="{% if request.url.path == request.url_for('home').path %}landing-page{% endif %}{% if minimal_auth_page %} auth-page{% endif %}"{% block body_data_attrs %}{% endblock %}>
+    <div class="page-backdrop"></div>
+    <div class="page-shell">
+      {% if not minimal_auth_page %}
+      <header class="site-header">
+        <a class="site-brand" href="{{ request.url_for('home') }}">
+          <span class="site-brand-mark">BS</span>
+          <div>
+            <strong>BSDAN商赛模拟器</strong>
+          </div>
+        </a>
+        <div class="site-header-actions">
+          {% if current_user %}
+          {% if active_game_summary %}
+          {{ page.action_link(((request.url_for('game_round') | string) ~ '?game_id=' ~ active_game_summary.game_id), (active_game_summary.action_label ~ ' · ' ~ (active_game_summary.company_name or "当前游戏") ~ ' · ' ~ active_game_summary.single_player_mode_label), 'ghost') }}
+          {% endif %}
+          <div class="site-user-chip">
+            <strong>{{ current_user.name }}</strong>
+            <span>{{ current_user.email }}</span>
+          </div>
+          <form method="post" action="{{ request.url_for('auth_logout') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+            <button type="submit" class="ghost">退出登录</button>
+          </form>
+          {% else %}
+          {{ page.action_link(request.url_for('auth_page'), '登录 / 注册', 'button button-primary') }}
+          {% endif %}
+        </div>
+      </header>
+      {% endif %}
+      <main class="page-main">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    <script src="{{ url_for('static', path='js/base.js') }}?v={{ static_asset_version }}"></script>
+    {% block page_scripts %}{% endblock %}
+  </body>
+</html>

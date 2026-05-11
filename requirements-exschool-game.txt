@@ -1,0 +1,8 @@
+# Backward-compatible all-in-one install target for the Exschool game.
+# Prefer requirements.txt for runtime, requirements-dev.txt for tests/browser
+# screenshots, and requirements-ocr.txt for OCR extraction work.
+-r requirements.txt
+
+playwright>=1.55,<2.0
+pytest>=8.3,<9.0
+pytesseract>=0.3.13,<0.4

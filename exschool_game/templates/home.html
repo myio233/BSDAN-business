@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% import "_page_macros.html" as page %}
+{% if current_user and active_game_summary %}
+{% set primary_action_href = (request.url_for('game_round') | string) ~ '?game_id=' ~ active_game_summary.game_id %}
+{% set primary_action_label = active_game_summary.action_label ~ ' · ' ~ active_game_summary.single_player_mode_label %}
+{% elif current_user %}
+{% set primary_action_href = request.url_for('mode_select') %}
+{% set primary_action_label = '开始游戏' %}
+{% else %}
+{% set primary_action_href = request.url_for('auth_page') %}
+{% set primary_action_label = '登录 / 注册' %}
+{% endif %}
+{% block content %}
+<section class="home-minimal">
+  <div class="home-minimal-inner">
+    {{ page.page_heading(
+      'BSDAN商赛模拟',
+      ('已登录为 ' ~ current_user.name ~ '。系统会自动保存所有进行中的对局，并保留最近 10 局完整结果。') if current_user else '先注册账号并完成邮箱验证码验证，再保存你的游戏进度和结果。',
+      'BSDAN商赛模拟器',
+      kicker_class='home-minimal-kicker',
+      title_class='home-minimal-title',
+      subtitle_class='home-minimal-subtitle'
+    ) }}
+    {{ page.alert(history_error) }}
+    {% call page.button_row(class_name='home-minimal-actions') %}
+      {{ page.action_link(primary_action_href, primary_action_label, 'home-minimal-button') }}
+      {% if current_user %}
+      {{ page.action_link(request.url_for('mode_select'), '重新开一局', 'button ghost') }}
+      {{ page.action_link(request.url_for('multiplayer_setup'), '多人房间', 'button ghost') }}
+      {% endif %}
+    {% endcall %}
+    {% if current_user and active_game_saves %}
+    <section class="home-history panel">
+      {{ page.section_head('进行中的对局', '可以在这里切换、继续或删除任意一局，不会因为新开一局覆盖旧进度。') }}
+      <div class="table-wrap">
+        <table class="report-table compact">
+          <thead>
+            <tr><th>公司</th><th>模式</th><th>主场</th><th>当前轮次</th><th>状态</th><th>更新时间</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            {% for item in active_game_saves %}
+            <tr {% if item.is_selected %}class="highlight-row"{% endif %}>
+              <td>{{ item.company_name }}</td>
+              <td>{{ item.single_player_mode_label }}</td>
+              <td>{{ item.home_city_label }}</td>
+              <td>{{ item.current_round }}</td>
+              <td>{{ item.current_round_status_label }}</td>
+              <td>{{ item.updated_at_label }}</td>
+              <td>
+                {% call page.button_row(class_name='inline-actions') %}
+                  {{ page.action_link(((request.url_for('game_round') | string) ~ '?game_id=' ~ item.game_id), item.action_label, 'ghost') }}
+                  <form method="post" action="{{ request.url_for('delete_saved_game', game_id=item.game_id) }}">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}" />
+                    <button type="submit" class="ghost">删除</button>
+                  </form>
+                {% endcall %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+    {% if current_user and active_multiplayer_rooms %}
+    <section class="home-history panel">
+      {{ page.section_head('多人房间', '这里显示你当前还在参与的实时多人房间。') }}
+      <div class="table-wrap">
+        <table class="report-table compact">
+          <thead>
+            <tr><th>房间码</th><th>状态</th><th>真人席位</th><th>bot</th><th>当前轮次</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            {% for item in active_multiplayer_rooms %}
+            <tr>
+              <td>{{ item.room_code }}</td>
+              <td>{{ item.status_label }}</td>
+              <td>{{ item.seat_label }}</td>
+              <td>{{ item.bot_label }}</td>
+              <td>{{ item.current_round_label }}</td>
+              <td>{{ page.action_link(request.url_for('multiplayer_room_page', room_id=item.room_id), '进入房间', 'ghost') }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+    {% if current_user and recent_history %}
+    <section class="home-history panel">
+      {{ page.section_head('最近完成的对局', '登录后会自动保存最近 10 次完整经营结果。') }}
+      <div class="table-wrap">
+        <table class="report-table compact">
+          <thead>
+            <tr><th>公司</th><th>模式</th><th>主场</th><th>完成时间</th><th>{{ recent_history[0].final_net_assets_label if recent_history else '最终净资产' }}</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            {% for item in recent_history %}
+            <tr>
+              <td>{{ item.company_name or "未命名公司" }}</td>
+              <td>{{ item.single_player_mode_label }}</td>
+              <td>{{ item.home_city_label }}</td>
+              <td>{{ item.completed_at_label }}</td>
+              <td>¥{{ "{:,.0f}".format(item.final_net_assets or 0) }}</td>
+              <td>{{ page.action_link(request.url_for('history_detail', game_id=item.game_id), '查看总结', 'ghost') }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

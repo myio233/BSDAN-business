@@ -1,0 +1,31 @@
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.env.local
+.smtp.env.local
+.venv/
+.omx/
+
+# Python/test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Runtime state
+storage/
+
+# Browser/debug output
+.playwright-mcp/
+.serena/
+outputs/playwright_multiplayer_validation/
+playwright-*.md
+.tmp_playwright/
+
+# OS/editor noise
+.DS_Store
+*~
+~$*
+*:Zone.Identifier

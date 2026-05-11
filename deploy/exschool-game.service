@@ -1,0 +1,18 @@
+[Unit]
+Description=Exschool Game FastAPI service
+After=network.target
+
+[Service]
+Type=simple
+User=bsdan
+Group=bsdan
+WorkingDirectory=/opt/bsdan-business
+Environment=EXSCHOOL_HOST=127.0.0.1
+Environment=EXSCHOOL_PORT=8010
+EnvironmentFile=-/etc/exschool-game.env
+ExecStart=/opt/bsdan-business/scripts/start_exschool_game.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
