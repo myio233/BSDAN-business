@@ -55,7 +55,7 @@ generated_reports/model_pipeline_current_baseline/
 scripts/                               Startup, preflight, and browser validation scripts
 deploy/                                Example systemd/nginx/env deployment files
 docs/                                  English and Chinese documentation
-test_*.py                              Regression tests
+tests/                                 Regression tests
 ```
 
 The bundled `.xlsx` files are intentional. They are not user secrets; they are the data artifacts needed for the public project to run the historical-opponent and model-backed modes. Runtime state, sessions, local credentials, Playwright output, and caches are ignored.
@@ -67,7 +67,7 @@ Python 3.11+ is recommended.
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements/runtime.txt
 uvicorn exschool_game.app:app --reload --app-dir . --port 8010
 ```
 
@@ -88,14 +88,14 @@ python -m exschool_game.app
 Install test and browser tooling:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements/dev.txt
 python -m playwright install chromium
 ```
 
 Optional OCR/reconstruction tooling:
 
 ```bash
-pip install -r requirements-ocr.txt
+pip install -r requirements/ocr.txt
 ```
 
 The OCR scripts also need system-level tools and cloud credentials when you run extraction workflows. The web simulator itself does not require OCR credentials.

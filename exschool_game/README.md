@@ -824,18 +824,18 @@ theoretical share
 
 测试文件：
 
-- [test_exschool_game_hr.py](../test_exschool_game_hr.py)
-- [test_market_allocation.py](../test_market_allocation.py)
-- [test_inventory.py](../test_inventory.py)
-- [test_finance.py](../test_finance.py)
-- [test_report_payload.py](../test_report_payload.py)
-- [test_campaign_support.py](../test_campaign_support.py)
-- [test_modeling.py](../test_modeling.py)
+- [test_exschool_game_hr.py](../tests/test_exschool_game_hr.py)
+- [test_market_allocation.py](../tests/test_market_allocation.py)
+- [test_inventory.py](../tests/test_inventory.py)
+- [test_finance.py](../tests/test_finance.py)
+- [test_report_payload.py](../tests/test_report_payload.py)
+- [test_campaign_support.py](../tests/test_campaign_support.py)
+- [test_modeling.py](../tests/test_modeling.py)
 
 运行：
 
 ```bash
-python -m pytest -q test_exschool_game_hr.py test_market_allocation.py test_inventory.py test_finance.py test_report_payload.py test_campaign_support.py test_modeling.py
+python -m pytest -q tests/test_exschool_game_hr.py tests/test_market_allocation.py tests/test_inventory.py tests/test_finance.py tests/test_report_payload.py tests/test_campaign_support.py tests/test_modeling.py
 ```
 
 当前基线：`24 passed`

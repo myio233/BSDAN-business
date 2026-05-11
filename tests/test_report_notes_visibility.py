@@ -1,7 +1,7 @@
 import exschool_game.app as app_module
 from exschool_game.engine import get_simulator
 
-from test_exschool_game_modes import _advance_active_round, _register_logged_in_client, _start_game, _submit_active_round
+from tests.test_exschool_game_modes import _advance_active_round, _register_logged_in_client, _start_game, _submit_active_round
 
 
 def test_submitted_round_report_page_surfaces_explanatory_notes() -> None:

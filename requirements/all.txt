@@ -1,0 +1,8 @@
+# All-in-one install target for the Exschool game.
+# Prefer runtime.txt for the app, dev.txt for tests/browser screenshots,
+# and ocr.txt for OCR extraction work.
+-r runtime.txt
+
+playwright>=1.55,<2.0
+pytest>=8.3,<9.0
+pytesseract>=0.3.13,<0.4

@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 import exschool_game.app as app_module
 from exschool_game.app import app
 from exschool_game.multiplayer_store import MultiplayerRoomStore
-from test_exschool_game_modes import _fetch_csrf_token, _round_form_data
+from tests.test_exschool_game_modes import _fetch_csrf_token, _round_form_data
 
 
 def _login_client(name: str, email: str, password: str = "playwright-pass") -> TestClient:

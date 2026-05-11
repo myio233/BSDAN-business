@@ -14,14 +14,14 @@ Important coverage areas:
 
 | Area | Representative tests |
 | --- | --- |
-| Campaign state and defaults | `test_campaign_support.py`, `test_exschool_game_modes.py` |
-| Engine settlement and report correctness | `test_engine_report_correctness.py`, `test_engine_data_fidelity.py`, `test_exschool_game_hr.py` |
-| Finance and inventory | `test_finance.py`, `test_inventory.py` |
-| Market allocation | `test_market_allocation.py`, `test_market_allocation_home_city_boost.py` |
-| Modeling and calibration | `test_modeling.py`, `test_modeling_stage2_market_context.py`, `test_runtime_stage1_calibrator_alignment.py` |
-| Multiplayer state | `test_multiplayer_mode.py`, `test_multiplayer_store.py` |
-| Report payload and export semantics | `test_report_payload.py`, `test_report_notes_visibility.py`, `test_export_report_html_semantics.py` |
-| Data provenance | `test_data_loader_provenance.py`, `test_reconstruct_exschool_decisions.py` |
+| Campaign state and defaults | `tests/test_campaign_support.py`, `tests/test_exschool_game_modes.py` |
+| Engine settlement and report correctness | `tests/test_engine_report_correctness.py`, `tests/test_engine_data_fidelity.py`, `tests/test_exschool_game_hr.py` |
+| Finance and inventory | `tests/test_finance.py`, `tests/test_inventory.py` |
+| Market allocation | `tests/test_market_allocation.py`, `tests/test_market_allocation_home_city_boost.py` |
+| Modeling and calibration | `tests/test_modeling.py`, `tests/test_modeling_stage2_market_context.py`, `tests/test_runtime_stage1_calibrator_alignment.py` |
+| Multiplayer state | `tests/test_multiplayer_mode.py`, `tests/test_multiplayer_store.py` |
+| Report payload and export semantics | `tests/test_report_payload.py`, `tests/test_report_notes_visibility.py`, `tests/test_export_report_html_semantics.py` |
+| Data provenance | `tests/test_data_loader_provenance.py`, `tests/test_reconstruct_exschool_decisions.py` |
 
 ## Launch Preflight
 
@@ -47,7 +47,7 @@ SMTP warnings are acceptable for local development when email verification is no
 Install browser tooling:
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements/dev.txt
 python -m playwright install chromium
 ```
 
